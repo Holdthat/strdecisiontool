@@ -18,7 +18,6 @@ export function calculateOneZeroThreeOneScenario(data, replacementData, years = 
   const downPayment = replacementValue - replacementMortgage;
   
   const depreciationBasis = replacementValue * 0.8;
-  const annualDepreciation = depreciationBasis / 27.5;
   
   const yearByYear = [];
   let propertyValue = replacementValue;
