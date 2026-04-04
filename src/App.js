@@ -1,6 +1,3 @@
-// src/App.js
-// Main application component
-
 import React, { useState } from 'react';
 import { 
   calculateHoldScenario, 
