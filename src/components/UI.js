@@ -209,17 +209,18 @@ export const NavBar = ({dark,setDark,onNav}) => (
         <text x="165" y="138" textAnchor="middle" fill="#C8962E" fontFamily="Georgia,serif" fontSize="32" fontStyle="italic">group</text>
       </svg>
       <div style={{minWidth:0}}>
-        <div style={{fontSize:26,fontWeight:800,color:'var(--text-primary)',letterSpacing:'-0.02em',lineHeight:1.1}}>
+        <div style={{fontSize:30,fontWeight:800,color:'var(--text-primary)',letterSpacing:'-0.02em',lineHeight:1}}>
           STR<span style={{color:'var(--gold)'}}>Invest</span>Calc
         </div>
-        <div style={{fontSize:12,color:'var(--text-muted)',fontFamily:"'JetBrains Mono',monospace",letterSpacing:'0.06em',marginTop:2}}>
-          SHORT TERM RENTAL · INVESTMENT ANALYZER
+        <div style={{fontSize:13,color:'var(--gold)',fontStyle:'italic',fontFamily:'Georgia,serif',marginTop:3}}>
+          by Vacation Home Group
         </div>
       </div>
     </div>
     <div style={{display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
       {onNav&&<>
         <button onClick={()=>onNav('calculator')} style={{background:'none',border:'none',color:'var(--accent)',fontSize:14,fontWeight:700,cursor:'pointer',padding:'6px 12px'}}>Calculator</button>
+        <button onClick={()=>onNav('resources')} style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:14,cursor:'pointer',padding:'6px 12px'}}>Resources</button>
         <button onClick={()=>onNav('pro')} style={{background:'none',border:'none',color:'var(--gold)',fontSize:14,fontWeight:700,cursor:'pointer',padding:'6px 12px'}}>Standard / Pro</button>
       </>}
       <span style={{fontSize:10,color:'var(--text-faint)',fontFamily:"'JetBrains Mono',monospace"}}>v{APP_VERSION}</span>
@@ -227,6 +228,43 @@ export const NavBar = ({dark,setDark,onNav}) => (
     </div>
   </nav>
 );
+
+// ===================================================================
+// APP HEADER BAR - shown inside the calculator/dashboard (like STRcalc)
+// ===================================================================
+export const AppHeader = ({dark}) => (
+  <div style={{
+    background:dark?'linear-gradient(135deg,#0B1120,#151D2E)':'linear-gradient(135deg,#FFFFFF,#F5F5F5)',
+    border:'1px solid var(--border-primary)',borderRadius:10,
+    padding:'16px 24px',marginBottom:16,
+    display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,
+  }}>
+    <div style={{display:'flex',alignItems:'center',gap:14}}>
+      <svg viewBox="0 0 320 170" width="70" height="37" style={{flexShrink:0}}>
+        <path d="M85 28 L110 12 L128 22 L155 4 L178 18 L195 10 L235 28" fill="none" stroke="#10B981" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
+        <line x1="80" y1="28" x2="240" y2="28" stroke="#C8962E" strokeWidth="0.8"/>
+        <text x="160" y="62" textAnchor="middle" fill={dark?'#FFFFFF':'#1A1A1A'} fontFamily="Georgia,serif" fontSize="34" fontWeight="700" letterSpacing="0.08em">VACATION</text>
+        <text x="160" y="95" textAnchor="middle" fill={dark?'#FFFFFF':'#1A1A1A'} fontFamily="Georgia,serif" fontSize="34" fontWeight="700" letterSpacing="0.08em">HOME</text>
+        <line x1="60" y1="103" x2="112" y2="103" stroke="#C8962E" strokeWidth="1.5" strokeLinecap="round"/>
+        <line x1="60" y1="109" x2="98" y2="109" stroke="#C8962E" strokeWidth="1" strokeLinecap="round"/>
+        <text x="165" y="138" textAnchor="middle" fill="#C8962E" fontFamily="Georgia,serif" fontSize="32" fontStyle="italic">group</text>
+      </svg>
+      <div>
+        <div style={{display:'flex',alignItems:'baseline',gap:8,flexWrap:'wrap'}}>
+          <span style={{fontSize:24,fontWeight:800,color:'var(--text-primary)',letterSpacing:'-0.01em'}}>
+            STR<span style={{color:'var(--gold)'}}>Invest</span>Calc
+          </span>
+          <span style={{fontSize:13,color:'var(--gold)',fontStyle:'italic',fontFamily:'Georgia,serif'}}>by Vacation Home Group</span>
+        </div>
+        <div style={{fontSize:12,color:'var(--text-muted)',fontFamily:"'JetBrains Mono',monospace",letterSpacing:'0.08em',marginTop:3}}>
+          SHORT TERM RENTAL INVESTMENT ANALYZER {String.fromCharCode(183)} Ver. {APP_VERSION}
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+
 
 // ═══════════════════════════════════════════════════════════
 // PRO GATE
@@ -238,6 +276,7 @@ export const ProGate = ({onUnlock,onClose}) => {
   const [phone,setPhone] = useState('');
   const [code,setCode] = useState('');
   const [loading,setLoading] = useState(false);
+  const [token,setToken] = useState('');
   const [error,setError] = useState('');
 
   const sendCode = async () => {
@@ -246,10 +285,10 @@ export const ProGate = ({onUnlock,onClose}) => {
     try {
       const resp = await fetch('/api/send-code', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({email,name}),
+        body:JSON.stringify({email,name,phone}),
       });
       const data = await resp.json();
-      if(resp.ok) { setStep('verify'); }
+      if(resp.ok && data.success) { setToken(data.token); setStep('verify'); }
       else { setError(data.error||'Failed to send code. Try again.'); }
     } catch(err) { setError('Network error. Please check your connection.'); }
     setLoading(false);
@@ -261,7 +300,7 @@ export const ProGate = ({onUnlock,onClose}) => {
     try {
       const resp = await fetch('/api/verify-code', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({email,code}),
+        body:JSON.stringify({code,token,name,phone}),
       });
       const data = await resp.json();
       if(resp.ok && data.success) { 

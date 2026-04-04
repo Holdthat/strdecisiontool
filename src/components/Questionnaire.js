@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, SectionLabel, InputField, SelectField } from './UI';
+import { Card, SectionLabel, InputField, SelectField, AppHeader } from './UI';
 import { fmt } from '../utils/calculations';
 
 const defaultForm = {
@@ -11,7 +11,7 @@ const defaultForm = {
   replacementExpenses:'',taxBracket:'32',
 };
 
-export default function Questionnaire({onComplete, initialData}) {
+export default function Questionnaire({onComplete, initialData, dark}) {
   const [step, setStep] = useState(1);
   const totalSteps = 4;
   const [form, setForm] = useState(initialData || defaultForm);
@@ -30,6 +30,7 @@ export default function Questionnaire({onComplete, initialData}) {
 
   return (
     <div style={{maxWidth:640,margin:'0 auto',padding:'40px 20px'}}>
+      <AppHeader dark={dark}/>
       {/* Progress */}
       <div style={{marginBottom:32}}>
         <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>

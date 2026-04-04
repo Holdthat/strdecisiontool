@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, SectionLabel, GoldDivider } from './UI';
 
-export default function LandingPage({onOpenCalc, onProClick, isPro, featRef, proRef}) {
+export default function LandingPage({onOpenCalc, onProClick, isPro, featRef, proRef, docsRef}) {
   const features = [
     {icon:'📊',title:'Hold vs. Sell vs. 1031',desc:'Three-scenario modeling with 10-year projections. Cumulative wealth, cash flow, and equity side by side.'},
     {icon:'🏦',title:'Full Financial Engine',desc:'Mortgage P&I, depreciation, capital gains, depreciation recapture, vacancy, and maintenance reserves.'},
@@ -91,7 +91,7 @@ export default function LandingPage({onOpenCalc, onProClick, isPro, featRef, pro
       </div>
 
       {/* DOCUMENTATION DOWNLOADS */}
-      <div style={{maxWidth:720,margin:'0 auto',padding:'48px 20px'}}>
+      <div ref={docsRef} id="resources" style={{maxWidth:720,margin:'0 auto',padding:'48px 20px'}}>
         <div style={{textAlign:'center',marginBottom:24}}>
           <SectionLabel>Free Downloads</SectionLabel>
           <h2 style={{fontSize:'clamp(22px,4vw,28px)',fontWeight:700,color:'var(--text-primary)',marginTop:8}}>User Manual and Glossary</h2>

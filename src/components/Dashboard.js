@@ -4,7 +4,7 @@ import {
   PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell, ComposedChart, Line,
 } from 'recharts';
-import { Card, SectionLabel, Slider, TabBar, ChartTooltip, InputField, SelectField } from './UI';
+import { Card, SectionLabel, Slider, TabBar, ChartTooltip, InputField, SelectField, AppHeader } from './UI';
 import { calculateHoldScenario, calculateSellScenario, calculate1031Scenario, calculateTaxBenefits, calculateMortgageScenario, fmt, fmtK } from '../utils/calculations';
 import { chartColors } from '../utils/theme';
 
@@ -650,7 +650,10 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
   // ═══════════════════════════════════════════════════════════
   return (
     <div style={{maxWidth:1100,margin:'0 auto',padding:'16px 12px'}}>
-      {/* Header */}
+      {/* App Header Bar — like STRcalc */}
+      <AppHeader dark={dark}/>
+
+      {/* Property info + action buttons */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
         <div style={{fontSize:16,fontWeight:600,color:'var(--text-muted)'}}>{formData.propertyType} · {formData.location}</div>
         <div style={{display:'flex',gap:6}}>
