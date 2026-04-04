@@ -1,108 +1,144 @@
 /**
- * STRInvestCalc - Complete Investment Decision Tool
- * =================================================
- * All Phases Integrated: Questionnaire → Calculations → Dashboard
- * Hold vs Sell vs 1031 Exchange Analysis
- * Sensitivity Sliders, Recharts Visualizations, PDF-ready
- * VHG Branding: #167A5E green, #9A7820 gold, dark theme
+ * STRInvestCalc — Investment Decision Tool
+ * =========================================
+ * Vacation Home Group
+ * 
+ * Features:
+ * - 4-step guided questionnaire
+ * - Hold vs Sell vs 1031 Exchange analysis
+ * - Recharts visualizations (line, bar, pie)
+ * - Real-time sensitivity sliders
+ * - Year-by-year comparison table
+ * - Dark / Light theme with localStorage persistence
+ * - VHG Brand Guide v4.1 compliant
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 
-// ═══════════════════════════════════════════════════════════════
-// THEME
-// ═══════════════════════════════════════════════════════════════
-const theme = {
-  accent: '#167A5E',
-  accentLight: '#1A9070',
-  accentDark: '#0F5E48',
-  gold: '#9A7820',
-  goldLight: '#C8962E',
-  bgPrimary: '#0B1120',
-  bgCard: '#151D2E',
-  bgCardHover: '#1A2438',
-  textPrimary: '#F8FAFC',
-  textSecondary: '#E2E8F0',
-  textMuted: '#94A3B8',
-  border: 'rgba(255,255,255,0.08)',
-  borderLight: 'rgba(255,255,255,0.12)',
-  green: '#1A9070',
-  red: '#EF4444',
-  blue: '#3B82F6',
-  purple: '#8B5CF6',
+/* ═══════════════════════════════════════════════════════════════
+   THEME SYSTEM — CSS variable objects per Brand Guide v4.1
+   ═══════════════════════════════════════════════════════════════ */
+
+const darkVars = {
+  '--bg-primary': '#0B1120',
+  '--bg-secondary': '#151D2E',
+  '--bg-tertiary': '#0F172A',
+  '--bg-card': '#151D2E',
+  '--bg-hover': 'rgba(21,29,46,0.8)',
+  '--bg-subtle': 'rgba(22,122,94,0.08)',
+  '--border-primary': 'rgba(255,255,255,0.08)',
+  '--border-accent': 'rgba(22,122,94,0.25)',
+  '--text-primary': '#F8FAFC',
+  '--text-secondary': '#E2E8F0',
+  '--text-muted': '#94A3B8',
+  '--text-faint': '#64748B',
+  '--text-dim': '#475569',
+  '--accent': '#167A5E',
+  '--accent-dark': '#0F5E48',
+  '--accent-glow': '#1A9070',
+  '--gold': '#9A7820',
+  '--gold-light': '#B8922E',
+  '--gold-subtle': 'rgba(154,120,32,0.12)',
+  '--green': '#1A9070',
+  '--red': '#EF4444',
+  '--blue': '#3B82F6',
+  '--purple': '#8B5CF6',
+  '--amber': '#F59E0B',
+  '--nav-bg': 'rgba(11,17,32,0.92)',
+  '--tooltip-bg': '#151D2E',
+  '--tooltip-border': 'rgba(255,255,255,0.1)',
+  '--input-bg': '#0F172A',
+  '--chart-grid': 'rgba(255,255,255,0.06)',
 };
 
-// ═══════════════════════════════════════════════════════════════
-// CALCULATION ENGINE
-// ═══════════════════════════════════════════════════════════════
+const lightVars = {
+  '--bg-primary': '#F5F5F5',
+  '--bg-secondary': '#FFFFFF',
+  '--bg-tertiary': '#EFEFEF',
+  '--bg-card': '#EFEFEF',
+  '--bg-hover': '#E8E8E8',
+  '--bg-subtle': 'rgba(22,122,94,0.06)',
+  '--border-primary': '#D8D8D8',
+  '--border-accent': 'rgba(22,122,94,0.3)',
+  '--text-primary': '#0A0A0A',
+  '--text-secondary': '#1E293B',
+  '--text-muted': '#3A3A3A',
+  '--text-faint': '#6B7280',
+  '--text-dim': '#94A3B8',
+  '--accent': '#167A5E',
+  '--accent-dark': '#0F5E48',
+  '--accent-glow': '#1A9070',
+  '--gold': '#9A7820',
+  '--gold-light': '#B8922E',
+  '--gold-subtle': 'rgba(154,120,32,0.08)',
+  '--green': '#167A5E',
+  '--red': '#DC2626',
+  '--blue': '#3B82F6',
+  '--purple': '#8B5CF6',
+  '--amber': '#D97706',
+  '--nav-bg': 'rgba(255,255,255,0.92)',
+  '--tooltip-bg': '#FFFFFF',
+  '--tooltip-border': '#D8D8D8',
+  '--input-bg': '#FFFFFF',
+  '--chart-grid': '#E8E8E8',
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   CALCULATION ENGINE
+   ═══════════════════════════════════════════════════════════════ */
 
 function calculateHoldScenario(data, years = 10) {
-  const {
-    currentValue = 0, purchasePrice = 0, annualRent = 0,
-    annualExpenses = 0, vacancyRate = 0, mortgageBalance = 0,
-    mortgageRate = 0, mortgageYearsRemaining = 0,
-    annualAppreciation = 0.03, roofAge = 0, hvacAge = 0,
-    waterHeaterAge = 0,
-  } = data;
+  const cv = parseFloat(data.currentValue) || 0;
+  const pp = parseFloat(data.purchasePrice) || 0;
+  const rent = parseFloat(data.annualRent) || 0;
+  const expenses = parseFloat(data.annualExpenses) || 0;
+  const vacancy = parseFloat(data.vacancyRate) || 0;
+  const mortBal = parseFloat(data.mortgageBalance) || 0;
+  const mortRate = parseFloat(data.mortgageRate) || 0;
+  const mortYrs = parseInt(data.mortgageYearsRemaining) || 0;
+  const appRate = parseFloat(data.annualAppreciation) || 0.03;
 
-  const cv = parseFloat(currentValue) || 0;
-  const pp = parseFloat(purchasePrice) || 0;
-  const rent = parseFloat(annualRent) || 0;
-  const expenses = parseFloat(annualExpenses) || 0;
-  const vacancy = parseFloat(vacancyRate) || 0;
-  const mortBal = parseFloat(mortgageBalance) || 0;
-  const mortRate = parseFloat(mortgageRate) || 0;
-  const mortYrs = parseInt(mortgageYearsRemaining) || 0;
-  const appRate = parseFloat(annualAppreciation) || 0.03;
-
-  // Annual mortgage payment (P&I)
   const monthlyRate = mortRate / 12;
   const totalPayments = mortYrs * 12;
   const monthlyPayment = mortBal > 0 && monthlyRate > 0 && totalPayments > 0
     ? mortBal * (monthlyRate * Math.pow(1 + monthlyRate, totalPayments)) /
-      (Math.pow(1 + monthlyRate, totalPayments) - 1)
-    : 0;
+      (Math.pow(1 + monthlyRate, totalPayments) - 1) : 0;
   const annualDebtService = monthlyPayment * 12;
 
-  // Depreciation (27.5 year straight-line on 85% of purchase price)
   const depreciableBasis = pp * 0.85;
   const annualDepreciation = depreciableBasis / 27.5;
 
-  // Maintenance reserves based on component age
   const maintenanceSchedule = [];
   for (let y = 1; y <= years; y++) {
     let extra = 0;
-    const rAge = parseInt(roofAge) + y;
-    const hAge = parseInt(hvacAge) + y;
-    const wAge = parseInt(waterHeaterAge) + y;
-    if (rAge >= 25 && rAge <= 27) extra += cv * 0.04; // Roof replacement
-    if (hAge >= 15 && hAge <= 17) extra += cv * 0.02; // HVAC replacement
-    if (wAge >= 12 && wAge <= 13) extra += cv * 0.005; // Water heater
+    const rAge = (parseInt(data.roofAge) || 0) + y;
+    const hAge = (parseInt(data.hvacAge) || 0) + y;
+    const wAge = (parseInt(data.waterHeaterAge) || 0) + y;
+    if (rAge >= 25 && rAge <= 27) extra += cv * 0.04;
+    if (hAge >= 15 && hAge <= 17) extra += cv * 0.02;
+    if (wAge >= 12 && wAge <= 13) extra += cv * 0.005;
     maintenanceSchedule.push(extra);
   }
 
-  // Year-by-year projections
   const yearlyData = [];
   let cumulativeCashFlow = 0;
   let remainingMortgage = mortBal;
 
   for (let y = 1; y <= years; y++) {
     const propertyValue = cv * Math.pow(1 + appRate, y);
-    const grossRent = rent * Math.pow(1.025, y - 1); // 2.5% rent growth
+    const grossRent = rent * Math.pow(1.025, y - 1);
     const effectiveRent = grossRent * (1 - vacancy / 100);
-    const opExpenses = expenses * Math.pow(1.03, y - 1); // 3% expense growth
+    const opExpenses = expenses * Math.pow(1.03, y - 1);
     const maintenance = maintenanceSchedule[y - 1] || 0;
     const debtService = y <= mortYrs ? annualDebtService : 0;
 
-    // Principal paydown
-    let principalPaid = 0;
     if (remainingMortgage > 0 && mortRate > 0) {
       const interestThisYear = remainingMortgage * mortRate;
-      principalPaid = Math.min(debtService - interestThisYear, remainingMortgage);
+      const principalPaid = Math.min(debtService - interestThisYear, remainingMortgage);
       remainingMortgage = Math.max(0, remainingMortgage - principalPaid);
     }
 
@@ -111,16 +147,11 @@ function calculateHoldScenario(data, years = 10) {
     const equity = propertyValue - remainingMortgage;
 
     yearlyData.push({
-      year: y,
-      propertyValue: Math.round(propertyValue),
-      grossRent: Math.round(grossRent),
-      effectiveRent: Math.round(effectiveRent),
-      opExpenses: Math.round(opExpenses),
-      maintenance: Math.round(maintenance),
-      debtService: Math.round(debtService),
-      netCashFlow: Math.round(netCashFlow),
-      cumulativeCashFlow: Math.round(cumulativeCashFlow),
-      equity: Math.round(equity),
+      year: y, propertyValue: Math.round(propertyValue),
+      grossRent: Math.round(grossRent), effectiveRent: Math.round(effectiveRent),
+      opExpenses: Math.round(opExpenses), maintenance: Math.round(maintenance),
+      debtService: Math.round(debtService), netCashFlow: Math.round(netCashFlow),
+      cumulativeCashFlow: Math.round(cumulativeCashFlow), equity: Math.round(equity),
       mortgageBalance: Math.round(remainingMortgage),
       depreciation: Math.round(annualDepreciation),
     });
@@ -140,12 +171,10 @@ function calculateSellScenario(data, years = 10, altReturn = 0.07) {
   const pp = parseFloat(data.purchasePrice) || 0;
   const mortBal = parseFloat(data.mortgageBalance) || 0;
 
-  // Selling costs
   const realtorFees = cv * 0.06;
   const closingCosts = cv * 0.015;
   const totalSellingCosts = realtorFees + closingCosts;
 
-  // Capital gains
   const depreciableBasis = pp * 0.85;
   const yearsOwned = parseInt(data.yearsOwned) || 1;
   const totalDepreciation = Math.min((depreciableBasis / 27.5) * yearsOwned, depreciableBasis);
@@ -155,17 +184,14 @@ function calculateSellScenario(data, years = 10, altReturn = 0.07) {
   const longTermGainsTax = Math.max(0, capitalGain - totalDepreciation) * 0.15;
   const totalTax = depreciationRecapture + longTermGainsTax;
 
-  // Net proceeds
   const grossProceeds = cv - mortBal;
   const netProceeds = grossProceeds - totalSellingCosts - totalTax;
 
-  // Invest proceeds
   const yearlyData = [];
   for (let y = 1; y <= years; y++) {
     const investedValue = netProceeds * Math.pow(1 + altReturn, y);
     yearlyData.push({
-      year: y,
-      investedValue: Math.round(investedValue),
+      year: y, investedValue: Math.round(investedValue),
       annualReturn: Math.round(investedValue * altReturn),
     });
   }
@@ -189,16 +215,15 @@ function calculate1031Scenario(data, years = 10) {
   const replacementExpenses = parseFloat(data.replacementExpenses) || parseFloat(data.annualExpenses) * 0.9;
   const appRate = parseFloat(data.annualAppreciation) || 0.03;
 
-  const exchangeCosts = cv * 0.03; // QI fees, legal, etc.
+  const exchangeCosts = cv * 0.03;
   const equityTransferred = cv - mortBal - exchangeCosts;
   const newMortgage = replacementValue - equityTransferred;
 
-  const monthlyRate = 0.065 / 12; // Assume 6.5% on new property
+  const monthlyRate = 0.065 / 12;
   const totalPayments = 360;
   const monthlyPayment = newMortgage > 0
     ? newMortgage * (monthlyRate * Math.pow(1 + monthlyRate, totalPayments)) /
-      (Math.pow(1 + monthlyRate, totalPayments) - 1)
-    : 0;
+      (Math.pow(1 + monthlyRate, totalPayments) - 1) : 0;
   const annualDebtService = monthlyPayment * 12;
 
   const yearlyData = [];
@@ -219,8 +244,7 @@ function calculate1031Scenario(data, years = 10) {
     }
 
     yearlyData.push({
-      year: y,
-      propertyValue: Math.round(propValue),
+      year: y, propertyValue: Math.round(propValue),
       netCashFlow: Math.round(netCash),
       cumulativeCashFlow: Math.round(cumulativeCashFlow),
       equity: Math.round(propValue - remainingMortgage),
@@ -232,185 +256,257 @@ function calculate1031Scenario(data, years = 10) {
     equityTransferred: Math.round(equityTransferred),
     newMortgage: Math.round(newMortgage),
     exchangeCosts: Math.round(exchangeCosts),
-    taxDeferred: Math.round(cv * 0.15), // Approximate deferred tax
+    taxDeferred: Math.round(cv * 0.15),
     yearlyData,
     totalWealth: (yearlyData[years - 1]?.equity || 0) + cumulativeCashFlow,
   };
 }
 
-// ═══════════════════════════════════════════════════════════════
-// UTILITY: Currency formatter
-// ═══════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
+   FORMATTERS
+   ═══════════════════════════════════════════════════════════════ */
+
 const fmt = (num) => new Intl.NumberFormat('en-US', {
   style: 'currency', currency: 'USD',
   minimumFractionDigits: 0, maximumFractionDigits: 0,
 }).format(num || 0);
 
 const fmtK = (num) => {
-  if (Math.abs(num) >= 1000000) return `$${(num / 1000000).toFixed(1)}M`;
-  if (Math.abs(num) >= 1000) return `$${(num / 1000).toFixed(0)}K`;
-  return fmt(num);
+  const n = num || 0;
+  if (Math.abs(n) >= 1000000) return `$${(n / 1000000).toFixed(1)}M`;
+  if (Math.abs(n) >= 1000) return `$${(n / 1000).toFixed(0)}K`;
+  return fmt(n);
 };
 
-// ═══════════════════════════════════════════════════════════════
-// SHARED UI COMPONENTS
-// ═══════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
+   VHG LOGOS — Brand Guide compliant
+   ═══════════════════════════════════════════════════════════════ */
 
-const Card = ({ children, style = {}, hover = false }) => (
+const VHGLogoMark = ({ size = 36 }) => (
+  <svg viewBox="0 0 64 64" width={size} height={size} style={{ flexShrink: 0 }}>
+    <rect width="64" height="64" rx="12" fill="var(--bg-card)" stroke="var(--border-primary)" strokeWidth="1"/>
+    <path d="M14 38 L22 26 L28 31 L34 20 L40 27 L44 23 L50 38" fill="none" stroke="#167A5E" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"/>
+    <line x1="12" y1="38" x2="52" y2="38" stroke="#9A7820" strokeWidth="0.7"/>
+    <text x="32" y="50" textAnchor="middle" fill="var(--text-primary)" fontFamily="Georgia, serif" fontSize="8" fontWeight="700" letterSpacing="0.04em">VH</text>
+    <text x="32" y="58" textAnchor="middle" fill="#9A7820" fontFamily="Georgia, serif" fontSize="7" fontStyle="italic">group</text>
+  </svg>
+);
+
+const VHGFooterLogo = ({ dark }) => {
+  const textFill = dark ? '#FFFFFF' : '#1A1A1A';
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 170" width="220" height="117">
+      <path d="M85 28 L110 12 L128 22 L155 4 L178 18 L195 10 L235 28" fill="none" stroke="#10B981" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
+      <line x1="80" y1="28" x2="240" y2="28" stroke="#C8962E" strokeWidth="0.8"/>
+      <text x="160" y="62" textAnchor="middle" fill={textFill} fontFamily="Georgia, serif" fontSize="34" fontWeight="700" letterSpacing="0.08em">VACATION</text>
+      <text x="160" y="95" textAnchor="middle" fill={textFill} fontFamily="Georgia, serif" fontSize="34" fontWeight="700" letterSpacing="0.08em">HOME</text>
+      <line x1="60" y1="103" x2="112" y2="103" stroke="#C8962E" strokeWidth="1.5" strokeLinecap="round"/>
+      <line x1="60" y1="109" x2="98" y2="109" stroke="#C8962E" strokeWidth="1" strokeLinecap="round"/>
+      <text x="165" y="138" textAnchor="middle" fill="#C8962E" fontFamily="Georgia, serif" fontSize="32" fontStyle="italic">group</text>
+    </svg>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   SHARED UI COMPONENTS
+   ═══════════════════════════════════════════════════════════════ */
+
+const Card = ({ children, style = {} }) => (
   <div style={{
-    background: theme.bgCard,
-    border: `1px solid ${theme.border}`,
-    borderRadius: '12px',
-    padding: '24px',
-    transition: 'all 0.2s',
-    ...(hover ? { cursor: 'pointer' } : {}),
-    ...style,
-  }}>
-    {children}
-  </div>
+    background: 'var(--bg-card)', border: '1px solid var(--border-primary)',
+    borderRadius: 10, padding: '20px 24px', ...style,
+  }}>{children}</div>
 );
 
 const SectionLabel = ({ children }) => (
   <div style={{
-    fontSize: '11px', fontWeight: '700', letterSpacing: '0.14em',
-    textTransform: 'uppercase', color: theme.gold,
-    fontFamily: "'JetBrains Mono', monospace", marginBottom: '16px',
-  }}>
-    {children}
-  </div>
+    fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
+    fontSize: 10, fontWeight: 700, letterSpacing: '0.14em',
+    textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 16,
+  }}>{children}</div>
+);
+
+const GoldDivider = ({ width = 120, mb = 20 }) => (
+  <div style={{
+    width, height: 1, margin: `0 auto ${mb}px`,
+    background: 'linear-gradient(90deg, transparent, var(--gold), transparent)',
+  }} />
 );
 
 const InputField = ({ label, name, value, onChange, type = 'text', prefix, suffix, placeholder, error }) => (
-  <div style={{ marginBottom: '16px' }}>
+  <div style={{ marginBottom: 16 }}>
     <label style={{
-      display: 'block', fontSize: '13px', fontWeight: '600',
-      color: theme.textSecondary, marginBottom: '6px',
-    }}>
-      {label}
-    </label>
+      display: 'block', fontSize: 13, fontWeight: 600,
+      color: 'var(--text-secondary)', marginBottom: 6,
+    }}>{label}</label>
     <div style={{ position: 'relative' }}>
-      {prefix && (
-        <span style={{
-          position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)',
-          color: theme.textMuted, fontSize: '14px',
-        }}>{prefix}</span>
-      )}
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
+      {prefix && <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 14 }}>{prefix}</span>}
+      <input type={type} name={name} value={value} onChange={onChange} placeholder={placeholder}
         style={{
           width: '100%', padding: '10px 12px',
-          paddingLeft: prefix ? '28px' : '12px',
-          paddingRight: suffix ? '40px' : '12px',
-          background: theme.bgPrimary,
-          border: `1px solid ${error ? theme.red : theme.border}`,
-          borderRadius: '8px', color: theme.textPrimary,
-          fontSize: '14px', outline: 'none',
+          paddingLeft: prefix ? 28 : 12, paddingRight: suffix ? 40 : 12,
+          background: 'var(--input-bg)',
+          border: `1px solid ${error ? 'var(--red)' : 'var(--border-primary)'}`,
+          borderRadius: 8, color: 'var(--text-primary)', fontSize: 14, outline: 'none',
           fontFamily: "'JetBrains Mono', monospace",
-        }}
-      />
-      {suffix && (
-        <span style={{
-          position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
-          color: theme.textMuted, fontSize: '13px',
-        }}>{suffix}</span>
-      )}
+        }} />
+      {suffix && <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 13 }}>{suffix}</span>}
     </div>
-    {error && <p style={{ color: theme.red, fontSize: '12px', marginTop: '4px' }}>{error}</p>}
+    {error && <p style={{ color: 'var(--red)', fontSize: 12, marginTop: 4 }}>{error}</p>}
   </div>
 );
 
 const SelectField = ({ label, name, value, onChange, options }) => (
-  <div style={{ marginBottom: '16px' }}>
-    <label style={{
-      display: 'block', fontSize: '13px', fontWeight: '600',
-      color: theme.textSecondary, marginBottom: '6px',
-    }}>{label}</label>
-    <select
-      name={name} value={value} onChange={onChange}
-      style={{
-        width: '100%', padding: '10px 12px',
-        background: theme.bgPrimary, border: `1px solid ${theme.border}`,
-        borderRadius: '8px', color: theme.textPrimary,
-        fontSize: '14px', outline: 'none',
-      }}
-    >
-      {options.map(o => (
-        <option key={o.value} value={o.value}>{o.label}</option>
-      ))}
+  <div style={{ marginBottom: 16 }}>
+    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>{label}</label>
+    <select name={name} value={value} onChange={onChange} style={{
+      width: '100%', padding: '10px 12px', background: 'var(--input-bg)',
+      border: '1px solid var(--border-primary)', borderRadius: 8,
+      color: 'var(--text-primary)', fontSize: 14, outline: 'none',
+    }}>
+      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   </div>
 );
 
 const Slider = ({ label, min, max, step, value, onChange, displayValue }) => (
   <div style={{
-    marginBottom: '20px', padding: '14px',
-    background: theme.bgCard, borderRadius: '8px',
-    border: `1px solid ${theme.border}`,
+    marginBottom: 20, padding: 14, background: 'var(--bg-card)',
+    borderRadius: 8, border: '1px solid var(--border-primary)',
   }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
       <span style={{
-        fontSize: '12px', fontWeight: '700', letterSpacing: '0.1em',
-        textTransform: 'uppercase', color: theme.gold,
-        fontFamily: "'JetBrains Mono', monospace",
+        fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700,
+        letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold)',
       }}>{label}</span>
-      <span style={{ fontSize: '14px', fontWeight: '600', color: theme.accent }}>
-        {displayValue}
-      </span>
+      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)' }}>{displayValue}</span>
     </div>
-    <input
-      type="range" min={min} max={max} step={step} value={value}
-      onChange={onChange}
+    <input type="range" min={min} max={max} step={step} value={value} onChange={onChange}
       style={{
-        width: '100%', height: '6px', borderRadius: '3px',
-        background: `linear-gradient(to right, ${theme.accent} 0%, ${theme.accent} ${((value - min) / (max - min)) * 100}%, ${theme.border} ${((value - min) / (max - min)) * 100}%, ${theme.border} 100%)`,
-      }}
-    />
-    <div style={{
-      display: 'flex', justifyContent: 'space-between',
-      fontSize: '10px', color: theme.textMuted, marginTop: '4px',
-    }}>
+        width: '100%', height: 6, borderRadius: 3,
+        background: `linear-gradient(to right, var(--accent) 0%, var(--accent) ${((value - min) / (max - min)) * 100}%, var(--border-primary) ${((value - min) / (max - min)) * 100}%, var(--border-primary) 100%)`,
+      }} />
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-faint)', marginTop: 4 }}>
       <span>{min}</span><span>{max}</span>
     </div>
   </div>
 );
 
-// ═══════════════════════════════════════════════════════════════
-// QUESTIONNAIRE COMPONENT
-// ═══════════════════════════════════════════════════════════════
+const ThemeToggle = ({ dark, setDark }) => (
+  <button onClick={() => setDark(!dark)} style={{
+    width: 36, height: 36, borderRadius: 8,
+    border: '1px solid var(--border-primary)',
+    background: 'rgba(255,255,255,0.06)',
+    color: 'var(--text-primary)', fontSize: 18, cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  }}>{dark ? '\u2600' : '\u263E'}</button>
+);
 
-const Questionnaire = ({ onComplete, initialData }) => {
+/* ═══════════════════════════════════════════════════════════════
+   VHG FOOTER — from Footer Template
+   ═══════════════════════════════════════════════════════════════ */
+
+const VHGFooter = ({ dark }) => (
+  <footer style={{
+    borderTop: '1px solid var(--border-primary)', padding: '32px 24px',
+    textAlign: 'center', marginTop: 40,
+  }}>
+    <div style={{ marginBottom: 0 }}><VHGFooterLogo dark={dark} /></div>
+    <div style={{ fontSize: 14, color: 'var(--text-muted)', fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>
+      Your Retreat, Our Expertise
+    </div>
+    <div style={{ fontSize: 14, color: 'var(--text-primary)', marginBottom: 28, fontFamily: "'DM Mono', monospace" }}>
+      Real Broker NH, LLC
+    </div>
+    <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 2 }}>
+      STR<span style={{ color: 'var(--gold)' }}>Invest</span>Calc
+    </div>
+    <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 16 }}>by Vacation Home Group</div>
+    <GoldDivider />
+    <div style={{ display: 'flex', justifyContent: 'center', gap: 60, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>Joe Mori</div>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>REALTOR&reg; &middot; Vacation Home Specialist</div>
+        <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+          <a href="tel:6039017777" style={{ color: 'var(--text-primary)', textDecoration: 'none' }}>603-901-7777</a>
+          <span style={{ margin: '0 4px' }}>&middot;</span>
+          <a href="mailto:joemori@vacationhome.group" style={{ color: 'var(--gold)', textDecoration: 'none' }}>joemori@vacationhome.group</a>
+        </div>
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>Dino Amato</div>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>REALTOR&reg; &middot; Vacation Home Specialist</div>
+        <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+          <a href="tel:6032751191" style={{ color: 'var(--text-primary)', textDecoration: 'none' }}>603-275-1191</a>
+          <span style={{ margin: '0 4px' }}>&middot;</span>
+          <a href="mailto:dinoamato@vacationhome.group" style={{ color: 'var(--gold)', textDecoration: 'none' }}>dinoamato@vacationhome.group</a>
+        </div>
+      </div>
+    </div>
+    <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 16 }}>
+      <a href="https://www.vacationhomegroup.net" style={{ color: 'var(--gold)', textDecoration: 'none', fontWeight: 600 }}>vacationhomegroup.net</a>
+      <span style={{ margin: '0 6px' }}>&middot;</span>
+      <a href="https://www.vacationhome.group" style={{ color: 'var(--gold)', textDecoration: 'none', fontWeight: 600 }}>vacationhome.group</a>
+      <span style={{ margin: '0 6px' }}>&middot;</span>
+      <span>Office: <a href="tel:8554500442" style={{ color: 'var(--text-primary)', textDecoration: 'none' }}>855-450-0442</a></span>
+    </div>
+    <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.8, maxWidth: 580, margin: '0 auto 10px' }}>
+      Joe Mori &amp; Dino Amato, Real Broker NH. Each office is independently owned and operated.
+    </p>
+    <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.8, maxWidth: 580, margin: '0 auto 10px' }}>
+      Projections are estimates based on user-provided inputs. This tool does not constitute financial or investment advice. Consult a qualified real estate professional before making investment decisions.
+    </p>
+    <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.8, maxWidth: 580, margin: '0 auto' }}>
+      By using this platform, you consent to the collection of your email address and preferences for the purpose of delivering personalized market analysis. We do not sell or share your information with third parties.
+    </p>
+  </footer>
+);
+
+/* ═══════════════════════════════════════════════════════════════
+   NAV BAR
+   ═══════════════════════════════════════════════════════════════ */
+
+const NavBar = ({ dark, setDark, subtitle }) => (
+  <nav style={{
+    borderBottom: '1px solid var(--border-primary)', padding: '16px 24px',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    background: dark
+      ? 'linear-gradient(135deg, #0B1120, #151D2E)'
+      : 'linear-gradient(135deg, #FFFFFF, #F5F5F5)',
+  }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <VHGLogoMark size={36} />
+      <div>
+        <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>
+          STR<span style={{ color: 'var(--gold)' }}>Invest</span>Calc
+        </span>
+        <div style={{ fontSize: 11, color: 'var(--gold)', fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>
+          by Vacation Home Group
+        </div>
+      </div>
+    </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      {subtitle && <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{subtitle}</span>}
+      <ThemeToggle dark={dark} setDark={setDark} />
+    </div>
+  </nav>
+);
+
+/* ═══════════════════════════════════════════════════════════════
+   QUESTIONNAIRE
+   ═══════════════════════════════════════════════════════════════ */
+
+const Questionnaire = ({ onComplete, initialData, dark, setDark }) => {
   const [step, setStep] = useState(1);
   const totalSteps = 4;
   const [form, setForm] = useState(initialData || {
-    propertyType: 'single-family',
-    location: '',
-    purchasePrice: '',
-    purchaseDate: '',
-    currentValue: '',
-    yearsOwned: '',
-    managementStyle: 'self-managed',
-    annualRent: '',
-    annualExpenses: '',
-    vacancyRate: '10',
-    mortgageBalance: '',
-    mortgageRate: '',
-    mortgageYearsRemaining: '',
-    depreciation: '',
-    roofAge: '5',
-    hvacAge: '5',
-    waterHeaterAge: '3',
-    capRate: '',
-    annualAppreciation: '3',
-    alternativeInvestment: 'stock-market',
-    alternativeReturn: '7',
-    exitStrategy: 'undecided',
-    replacementValue: '',
-    replacementRent: '',
-    replacementExpenses: '',
+    propertyType: 'single-family', location: '', purchasePrice: '', purchaseDate: '',
+    currentValue: '', yearsOwned: '', managementStyle: 'self-managed', annualRent: '',
+    annualExpenses: '', vacancyRate: '10', mortgageBalance: '', mortgageRate: '',
+    mortgageYearsRemaining: '', depreciation: '', roofAge: '5', hvacAge: '5',
+    waterHeaterAge: '3', capRate: '', annualAppreciation: '3',
+    alternativeInvestment: 'stock-market', alternativeReturn: '7',
+    exitStrategy: 'undecided', replacementValue: '', replacementRent: '', replacementExpenses: '',
   });
   const [errors, setErrors] = useState({});
 
@@ -438,577 +534,356 @@ const Questionnaire = ({ onComplete, initialData }) => {
   const prev = () => setStep(s => Math.max(s - 1, 1));
   const submit = () => { if (validate()) onComplete(form); };
 
-  // Progress bar
   const ProgressBar = () => (
-    <div style={{ marginBottom: '32px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+    <div style={{ marginBottom: 32 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
         {['Property', 'Financials', 'Market', 'Review'].map((label, i) => (
           <div key={i} style={{
-            fontSize: '11px', fontWeight: step > i ? '700' : '500',
-            color: step > i ? theme.accent : step === i + 1 ? theme.gold : theme.textMuted,
+            fontSize: 11, fontWeight: step > i ? 700 : 500,
+            color: step > i ? 'var(--accent)' : step === i + 1 ? 'var(--gold)' : 'var(--text-muted)',
             letterSpacing: '0.05em', textTransform: 'uppercase',
+            fontFamily: "'JetBrains Mono', monospace",
           }}>{label}</div>
         ))}
       </div>
-      <div style={{ height: '3px', background: theme.border, borderRadius: '2px' }}>
+      <div style={{ height: 3, background: 'var(--border-primary)', borderRadius: 2 }}>
         <div style={{
           height: '100%', width: `${(step / totalSteps) * 100}%`,
-          background: `linear-gradient(90deg, ${theme.accent}, ${theme.gold})`,
-          borderRadius: '2px', transition: 'width 0.3s',
+          background: 'linear-gradient(90deg, var(--accent), var(--gold))',
+          borderRadius: 2, transition: 'width 0.3s',
         }} />
       </div>
     </div>
   );
 
   return (
-    <div style={{ maxWidth: '640px', margin: '0 auto', padding: '40px 20px' }}>
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '36px', fontWeight: '700', margin: 0 }}>
-          STR<span style={{ color: theme.gold }}>Invest</span>Calc
-        </h1>
-        <p style={{ color: theme.gold, fontSize: '13px', marginTop: '8px',
-          fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em' }}>
-          INVESTMENT DECISION TOOL
-        </p>
-      </div>
-
-      <ProgressBar />
-
-      <Card>
-        {/* STEP 1: Property & Portfolio */}
-        {step === 1 && (
-          <>
-            <SectionLabel>Property & Portfolio</SectionLabel>
-            <SelectField label="Property Type" name="propertyType" value={form.propertyType}
-              onChange={handleChange} options={[
-                { value: 'single-family', label: 'Single Family' },
-                { value: 'condo', label: 'Condo / Townhome' },
-                { value: 'multi-family', label: 'Multi-Family' },
-                { value: 'cabin', label: 'Cabin / Vacation Home' },
-              ]} />
-            <InputField label="Location (City, State)" name="location" value={form.location}
-              onChange={handleChange} placeholder="e.g. Lincoln, NH" error={errors.location} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <InputField label="Purchase Price" name="purchasePrice" value={form.purchasePrice}
-                onChange={handleChange} type="number" prefix="$" error={errors.purchasePrice} />
-              <InputField label="Current Market Value" name="currentValue" value={form.currentValue}
-                onChange={handleChange} type="number" prefix="$" error={errors.currentValue} />
+    <div style={{ minHeight: '100vh' }}>
+      <NavBar dark={dark} setDark={setDark} />
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: '40px 20px' }}>
+        <ProgressBar />
+        <Card>
+          {step === 1 && (<>
+            <SectionLabel>Property &amp; Portfolio</SectionLabel>
+            <SelectField label="Property Type" name="propertyType" value={form.propertyType} onChange={handleChange} options={[
+              { value: 'single-family', label: 'Single Family' }, { value: 'condo', label: 'Condo / Townhome' },
+              { value: 'multi-family', label: 'Multi-Family' }, { value: 'cabin', label: 'Cabin / Vacation Home' },
+            ]} />
+            <InputField label="Location (City, State)" name="location" value={form.location} onChange={handleChange} placeholder="e.g. Lincoln, NH" error={errors.location} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <InputField label="Purchase Price" name="purchasePrice" value={form.purchasePrice} onChange={handleChange} type="number" prefix="$" error={errors.purchasePrice} />
+              <InputField label="Current Market Value" name="currentValue" value={form.currentValue} onChange={handleChange} type="number" prefix="$" error={errors.currentValue} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <InputField label="Years Owned" name="yearsOwned" value={form.yearsOwned}
-                onChange={handleChange} type="number" suffix="yrs" />
-              <InputField label="Annual Gross Rent" name="annualRent" value={form.annualRent}
-                onChange={handleChange} type="number" prefix="$" error={errors.annualRent} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <InputField label="Years Owned" name="yearsOwned" value={form.yearsOwned} onChange={handleChange} type="number" suffix="yrs" />
+              <InputField label="Annual Gross Rent" name="annualRent" value={form.annualRent} onChange={handleChange} type="number" prefix="$" error={errors.annualRent} />
             </div>
-            <SelectField label="Management Style" name="managementStyle" value={form.managementStyle}
-              onChange={handleChange} options={[
-                { value: 'self-managed', label: 'Self-Managed' },
-                { value: 'property-manager', label: 'Property Manager (20-25%)' },
-                { value: 'hybrid', label: 'Hybrid' },
-              ]} />
-          </>
-        )}
+            <SelectField label="Management Style" name="managementStyle" value={form.managementStyle} onChange={handleChange} options={[
+              { value: 'self-managed', label: 'Self-Managed' }, { value: 'property-manager', label: 'Property Manager (20-25%)' }, { value: 'hybrid', label: 'Hybrid' },
+            ]} />
+          </>)}
 
-        {/* STEP 2: Financial Snapshot */}
-        {step === 2 && (
-          <>
+          {step === 2 && (<>
             <SectionLabel>Financial Snapshot</SectionLabel>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <InputField label="Annual Operating Expenses" name="annualExpenses" value={form.annualExpenses}
-                onChange={handleChange} type="number" prefix="$" error={errors.annualExpenses} />
-              <InputField label="Vacancy Rate" name="vacancyRate" value={form.vacancyRate}
-                onChange={handleChange} type="number" suffix="%" />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <InputField label="Annual Operating Expenses" name="annualExpenses" value={form.annualExpenses} onChange={handleChange} type="number" prefix="$" error={errors.annualExpenses} />
+              <InputField label="Vacancy Rate" name="vacancyRate" value={form.vacancyRate} onChange={handleChange} type="number" suffix="%" />
             </div>
             <SectionLabel>Mortgage Details</SectionLabel>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <InputField label="Mortgage Balance" name="mortgageBalance" value={form.mortgageBalance}
-                onChange={handleChange} type="number" prefix="$" />
-              <InputField label="Interest Rate" name="mortgageRate" value={form.mortgageRate}
-                onChange={handleChange} type="number" suffix="%" />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <InputField label="Mortgage Balance" name="mortgageBalance" value={form.mortgageBalance} onChange={handleChange} type="number" prefix="$" />
+              <InputField label="Interest Rate" name="mortgageRate" value={form.mortgageRate} onChange={handleChange} type="number" suffix="%" />
             </div>
-            <InputField label="Years Remaining" name="mortgageYearsRemaining" value={form.mortgageYearsRemaining}
-              onChange={handleChange} type="number" suffix="yrs" />
+            <InputField label="Years Remaining" name="mortgageYearsRemaining" value={form.mortgageYearsRemaining} onChange={handleChange} type="number" suffix="yrs" />
             <SectionLabel>Property Condition</SectionLabel>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-              <InputField label="Roof Age" name="roofAge" value={form.roofAge}
-                onChange={handleChange} type="number" suffix="yrs" />
-              <InputField label="HVAC Age" name="hvacAge" value={form.hvacAge}
-                onChange={handleChange} type="number" suffix="yrs" />
-              <InputField label="Water Heater" name="waterHeaterAge" value={form.waterHeaterAge}
-                onChange={handleChange} type="number" suffix="yrs" />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              <InputField label="Roof Age" name="roofAge" value={form.roofAge} onChange={handleChange} type="number" suffix="yrs" />
+              <InputField label="HVAC Age" name="hvacAge" value={form.hvacAge} onChange={handleChange} type="number" suffix="yrs" />
+              <InputField label="Water Heater" name="waterHeaterAge" value={form.waterHeaterAge} onChange={handleChange} type="number" suffix="yrs" />
             </div>
-          </>
-        )}
+          </>)}
 
-        {/* STEP 3: Market & Opportunity */}
-        {step === 3 && (
-          <>
+          {step === 3 && (<>
             <SectionLabel>Market Assumptions</SectionLabel>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <InputField label="Annual Appreciation" name="annualAppreciation" value={form.annualAppreciation}
-                onChange={handleChange} type="number" suffix="%" />
-              <InputField label="Cap Rate (optional)" name="capRate" value={form.capRate}
-                onChange={handleChange} type="number" suffix="%" />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <InputField label="Annual Appreciation" name="annualAppreciation" value={form.annualAppreciation} onChange={handleChange} type="number" suffix="%" />
+              <InputField label="Cap Rate (optional)" name="capRate" value={form.capRate} onChange={handleChange} type="number" suffix="%" />
             </div>
             <SectionLabel>Alternative Investment</SectionLabel>
-            <SelectField label="If you sell, where would you invest?" name="alternativeInvestment"
-              value={form.alternativeInvestment} onChange={handleChange} options={[
-                { value: 'stock-market', label: 'Stock Market (S&P 500)' },
-                { value: 'bonds', label: 'Bonds / Fixed Income' },
-                { value: 'another-property', label: 'Another Property (non-1031)' },
-                { value: 'mixed', label: 'Mixed Portfolio' },
-              ]} />
-            <InputField label="Expected Annual Return" name="alternativeReturn" value={form.alternativeReturn}
-              onChange={handleChange} type="number" suffix="%" />
+            <SelectField label="If you sell, where would you invest?" name="alternativeInvestment" value={form.alternativeInvestment} onChange={handleChange} options={[
+              { value: 'stock-market', label: 'Stock Market (S&P 500)' }, { value: 'bonds', label: 'Bonds / Fixed Income' },
+              { value: 'another-property', label: 'Another Property (non-1031)' }, { value: 'mixed', label: 'Mixed Portfolio' },
+            ]} />
+            <InputField label="Expected Annual Return" name="alternativeReturn" value={form.alternativeReturn} onChange={handleChange} type="number" suffix="%" />
             <SectionLabel>Exit Strategy Interest</SectionLabel>
-            <SelectField label="What are you considering?" name="exitStrategy"
-              value={form.exitStrategy} onChange={handleChange} options={[
-                { value: 'undecided', label: "Not sure yet — show me the data" },
-                { value: 'hold', label: 'Leaning toward holding' },
-                { value: 'sell', label: 'Leaning toward selling' },
-                { value: '1031', label: 'Interested in 1031 Exchange' },
-              ]} />
-            {form.exitStrategy === '1031' && (
-              <>
-                <SectionLabel>1031 Exchange — Replacement Property</SectionLabel>
-                <InputField label="Replacement Property Value" name="replacementValue"
-                  value={form.replacementValue} onChange={handleChange} type="number" prefix="$" />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <InputField label="Expected Annual Rent" name="replacementRent"
-                    value={form.replacementRent} onChange={handleChange} type="number" prefix="$" />
-                  <InputField label="Expected Annual Expenses" name="replacementExpenses"
-                    value={form.replacementExpenses} onChange={handleChange} type="number" prefix="$" />
-                </div>
-              </>
-            )}
-          </>
-        )}
+            <SelectField label="What are you considering?" name="exitStrategy" value={form.exitStrategy} onChange={handleChange} options={[
+              { value: 'undecided', label: "Not sure yet \u2014 show me the data" }, { value: 'hold', label: 'Leaning toward holding' },
+              { value: 'sell', label: 'Leaning toward selling' }, { value: '1031', label: 'Interested in 1031 Exchange' },
+            ]} />
+            {form.exitStrategy === '1031' && (<>
+              <SectionLabel>1031 Exchange \u2014 Replacement Property</SectionLabel>
+              <InputField label="Replacement Property Value" name="replacementValue" value={form.replacementValue} onChange={handleChange} type="number" prefix="$" />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <InputField label="Expected Annual Rent" name="replacementRent" value={form.replacementRent} onChange={handleChange} type="number" prefix="$" />
+                <InputField label="Expected Annual Expenses" name="replacementExpenses" value={form.replacementExpenses} onChange={handleChange} type="number" prefix="$" />
+              </div>
+            </>)}
+          </>)}
 
-        {/* STEP 4: Review */}
-        {step === 4 && (
-          <>
+          {step === 4 && (<>
             <SectionLabel>Review Your Inputs</SectionLabel>
-            <div style={{ fontSize: '14px', color: theme.textSecondary, lineHeight: '2' }}>
-              <p><strong style={{ color: theme.gold }}>Property:</strong> {form.propertyType} in {form.location || '—'}</p>
-              <p><strong style={{ color: theme.gold }}>Purchase Price:</strong> {fmt(form.purchasePrice)}</p>
-              <p><strong style={{ color: theme.gold }}>Current Value:</strong> {fmt(form.currentValue)}</p>
-              <p><strong style={{ color: theme.gold }}>Annual Rent:</strong> {fmt(form.annualRent)}</p>
-              <p><strong style={{ color: theme.gold }}>Annual Expenses:</strong> {fmt(form.annualExpenses)}</p>
-              <p><strong style={{ color: theme.gold }}>Mortgage:</strong> {fmt(form.mortgageBalance)} @ {form.mortgageRate || 0}%</p>
-              <p><strong style={{ color: theme.gold }}>Appreciation:</strong> {form.annualAppreciation}% / year</p>
-              <p><strong style={{ color: theme.gold }}>Alt. Return:</strong> {form.alternativeReturn}%</p>
-              <p><strong style={{ color: theme.gold }}>Strategy:</strong> {form.exitStrategy}</p>
+            <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 2 }}>
+              <p><strong style={{ color: 'var(--gold)' }}>Property:</strong> {form.propertyType} in {form.location || '\u2014'}</p>
+              <p><strong style={{ color: 'var(--gold)' }}>Purchase Price:</strong> {fmt(form.purchasePrice)}</p>
+              <p><strong style={{ color: 'var(--gold)' }}>Current Value:</strong> {fmt(form.currentValue)}</p>
+              <p><strong style={{ color: 'var(--gold)' }}>Annual Rent:</strong> {fmt(form.annualRent)}</p>
+              <p><strong style={{ color: 'var(--gold)' }}>Annual Expenses:</strong> {fmt(form.annualExpenses)}</p>
+              <p><strong style={{ color: 'var(--gold)' }}>Mortgage:</strong> {fmt(form.mortgageBalance)} @ {form.mortgageRate || 0}%</p>
+              <p><strong style={{ color: 'var(--gold)' }}>Appreciation:</strong> {form.annualAppreciation}% / year</p>
+              <p><strong style={{ color: 'var(--gold)' }}>Alt. Return:</strong> {form.alternativeReturn}%</p>
+              <p><strong style={{ color: 'var(--gold)' }}>Strategy:</strong> {form.exitStrategy}</p>
             </div>
             <div style={{
-              marginTop: '20px', padding: '12px', borderRadius: '8px',
-              background: `rgba(22, 122, 94, 0.1)`, border: `1px solid rgba(22, 122, 94, 0.3)`,
-              fontSize: '13px', color: theme.textMuted,
+              marginTop: 20, padding: 12, borderRadius: 8,
+              background: 'var(--bg-subtle)', border: '1px solid var(--border-accent)',
+              fontSize: 13, color: 'var(--text-muted)',
             }}>
-              Click "Analyze" to run your Hold vs. Sell{form.exitStrategy === '1031' ? ' vs. 1031 Exchange' : ''} comparison.
-              You can adjust assumptions anytime from the dashboard.
+              Click "Analyze" to run your Hold vs. Sell{form.exitStrategy === '1031' ? ' vs. 1031 Exchange' : ''} comparison. You can adjust assumptions anytime from the dashboard.
             </div>
-          </>
-        )}
+          </>)}
 
-        {/* Navigation */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '28px' }}>
-          {step > 1 ? (
-            <button onClick={prev} style={{
-              padding: '10px 24px', borderRadius: '8px', border: `1px solid ${theme.border}`,
-              background: 'transparent', color: theme.textMuted, fontSize: '14px', cursor: 'pointer',
-            }}>← Back</button>
-          ) : <div />}
-          {step < totalSteps ? (
-            <button onClick={next} style={{
-              padding: '10px 28px', borderRadius: '8px', border: 'none',
-              background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentDark})`,
-              color: '#fff', fontSize: '14px', fontWeight: '700', cursor: 'pointer',
-            }}>Continue →</button>
-          ) : (
-            <button onClick={submit} style={{
-              padding: '12px 36px', borderRadius: '8px', border: 'none',
-              background: `linear-gradient(135deg, ${theme.gold}, ${theme.goldLight})`,
-              color: '#fff', fontSize: '14px', fontWeight: '700', cursor: 'pointer',
-              letterSpacing: '0.05em',
-            }}>Analyze →</button>
-          )}
-        </div>
-      </Card>
-
-      {/* Footer */}
-      <p style={{
-        textAlign: 'center', fontSize: '11px', color: theme.textMuted,
-        marginTop: '32px', lineHeight: '1.8',
-      }}>
-        This tool does not constitute financial or investment advice.<br />
-        Consult a qualified real estate professional before making investment decisions.
-      </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28 }}>
+            {step > 1 ? (
+              <button onClick={prev} style={{ padding: '10px 24px', borderRadius: 8, border: '1px solid var(--border-primary)', background: 'transparent', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}>&larr; Back</button>
+            ) : <div />}
+            {step < totalSteps ? (
+              <button onClick={next} style={{ padding: '10px 28px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Continue &rarr;</button>
+            ) : (
+              <button onClick={submit} style={{ padding: '12px 36px', borderRadius: 8, border: 'none', background: 'var(--gold)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em' }}>Analyze &rarr;</button>
+            )}
+          </div>
+        </Card>
+        <VHGFooter dark={dark} />
+      </div>
     </div>
   );
 };
 
-// ═══════════════════════════════════════════════════════════════
-// DASHBOARD COMPONENT
-// ═══════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
+   DASHBOARD
+   ═══════════════════════════════════════════════════════════════ */
 
-const Dashboard = ({ formData, holdResult, sellResult, exchangeResult, onEditAssumptions }) => {
+const Dashboard = ({ formData, holdResult, sellResult, exchangeResult, onEditAssumptions, dark, setDark }) => {
   const show1031 = !!exchangeResult;
-  const years = 10;
 
-  // Sensitivity state
   const [sens, setSens] = useState({
-    rentGrowth: 2.5,
-    vacancyRate: parseFloat(formData.vacancyRate) || 10,
-    maintenanceMult: 1.0,
-    appreciation: parseFloat(formData.annualAppreciation) || 3,
-    altReturn: parseFloat(formData.alternativeReturn) || 7,
-    yearsToHold: 10,
+    rentGrowth: 2.5, vacancyRate: parseFloat(formData.vacancyRate) || 10,
+    maintenanceMult: 1.0, appreciation: parseFloat(formData.annualAppreciation) || 3,
+    altReturn: parseFloat(formData.alternativeReturn) || 7, yearsToHold: 10,
   });
 
-  // Recalculate with sensitivity
   const results = useMemo(() => {
-    const adjustedData = {
-      ...formData,
-      annualAppreciation: sens.appreciation / 100,
-      vacancyRate: sens.vacancyRate,
-      alternativeReturn: sens.altReturn / 100,
-    };
-
-    const hold = calculateHoldScenario(adjustedData, sens.yearsToHold);
-    const sell = calculateSellScenario(adjustedData, sens.yearsToHold, sens.altReturn / 100);
-    const exch = show1031 ? calculate1031Scenario(adjustedData, sens.yearsToHold) : null;
-
+    const adj = { ...formData, annualAppreciation: sens.appreciation / 100, vacancyRate: sens.vacancyRate, alternativeReturn: sens.altReturn / 100 };
+    const hold = calculateHoldScenario(adj, sens.yearsToHold);
+    const sell = calculateSellScenario(adj, sens.yearsToHold, sens.altReturn / 100);
+    const exch = show1031 ? calculate1031Scenario(adj, sens.yearsToHold) : null;
     return { hold, sell, exch };
   }, [formData, sens, show1031]);
 
   const { hold, sell, exch } = results;
 
-  // Determine recommendation
-  const getRecommendation = () => {
-    const holdW = hold.totalWealth;
-    const sellW = sell.totalWealthAtEnd;
-    const exchW = exch?.totalWealth || 0;
+  const rec = useMemo(() => {
+    const holdW = hold.totalWealth, sellW = sell.totalWealthAtEnd, exchW = exch?.totalWealth || 0;
+    if (show1031 && exchW > holdW && exchW > sellW) return { text: '1031 Exchange', color: 'var(--purple)' };
+    if (holdW > sellW) return { text: 'Hold Property', color: 'var(--accent)' };
+    return { text: 'Sell & Invest', color: 'var(--blue)' };
+  }, [hold, sell, exch, show1031]);
 
-    if (show1031 && exchW > holdW && exchW > sellW) return { text: '1031 Exchange', color: theme.purple };
-    if (holdW > sellW) return { text: 'Hold Property', color: theme.accent };
-    return { text: 'Sell & Invest', color: theme.blue };
-  };
-
-  const rec = getRecommendation();
-
-  // Chart data
   const chartData = useMemo(() => {
     const data = [];
     for (let y = 0; y <= sens.yearsToHold; y++) {
-      const point = { year: y };
+      const pt = { year: y };
       if (y === 0) {
-        point.hold = parseFloat(formData.currentValue) - parseFloat(formData.mortgageBalance || 0);
-        point.sell = sell.netProceeds;
-        if (show1031) point.exchange = exch.equityTransferred;
+        pt.hold = parseFloat(formData.currentValue) - parseFloat(formData.mortgageBalance || 0);
+        pt.sell = sell.netProceeds;
+        if (show1031) pt.exchange = exch.equityTransferred;
       } else {
-        point.hold = hold.yearlyData[y - 1]?.equity + (hold.yearlyData[y - 1]?.cumulativeCashFlow || 0);
-        point.sell = sell.yearlyData[y - 1]?.investedValue;
-        if (show1031) point.exchange = (exch.yearlyData[y - 1]?.equity || 0) + (exch.yearlyData[y - 1]?.cumulativeCashFlow || 0);
+        pt.hold = (hold.yearlyData[y - 1]?.equity || 0) + (hold.yearlyData[y - 1]?.cumulativeCashFlow || 0);
+        pt.sell = sell.yearlyData[y - 1]?.investedValue;
+        if (show1031) pt.exchange = (exch.yearlyData[y - 1]?.equity || 0) + (exch.yearlyData[y - 1]?.cumulativeCashFlow || 0);
       }
-      data.push(point);
+      data.push(pt);
     }
     return data;
   }, [hold, sell, exch, sens.yearsToHold, formData, show1031]);
 
-  // Cash flow chart data
-  const cashFlowData = useMemo(() => {
-    return hold.yearlyData.map(d => ({
-      year: `Yr ${d.year}`,
-      revenue: d.effectiveRent,
-      expenses: -(d.opExpenses + d.maintenance),
-      debtService: -d.debtService,
-      net: d.netCashFlow,
-    }));
-  }, [hold]);
+  const cashFlowData = useMemo(() => hold.yearlyData.map(d => ({
+    year: `Yr ${d.year}`, revenue: d.effectiveRent,
+    expenses: -(d.opExpenses + d.maintenance), debtService: -d.debtService,
+  })), [hold]);
 
-  // Expense breakdown for pie chart
   const expensePieData = useMemo(() => {
     const yr1 = hold.yearlyData[0] || {};
     return [
-      { name: 'Operating', value: yr1.opExpenses || 0, color: theme.blue },
-      { name: 'Maintenance', value: yr1.maintenance || 0, color: theme.gold },
-      { name: 'Debt Service', value: yr1.debtService || 0, color: theme.red },
+      { name: 'Operating', value: yr1.opExpenses || 0, color: '#3B82F6' },
+      { name: 'Maintenance', value: yr1.maintenance || 0, color: '#9A7820' },
+      { name: 'Debt Service', value: yr1.debtService || 0, color: dark ? '#EF4444' : '#DC2626' },
     ].filter(d => d.value > 0);
-  }, [hold]);
+  }, [hold, dark]);
 
-  // Tooltip formatter
-  const CustomTooltip = ({ active, payload, label }) => {
+  const CustomTooltip = useCallback(({ active, payload, label }) => {
     if (!active || !payload) return null;
     return (
-      <div style={{
-        background: theme.bgCard, border: `1px solid ${theme.border}`,
-        borderRadius: '8px', padding: '12px', fontSize: '12px',
-      }}>
-        <p style={{ color: theme.gold, fontWeight: '700', marginBottom: '6px' }}>Year {label}</p>
-        {payload.map((p, i) => (
-          <p key={i} style={{ color: p.color, margin: '2px 0' }}>
-            {p.name}: {fmt(p.value)}
-          </p>
-        ))}
+      <div style={{ background: 'var(--tooltip-bg)', border: '1px solid var(--tooltip-border)', borderRadius: 8, padding: 12, fontSize: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+        <p style={{ color: 'var(--gold)', fontWeight: 700, marginBottom: 6 }}>Year {label}</p>
+        {payload.map((p, i) => <p key={i} style={{ color: p.color, margin: '2px 0' }}>{p.name}: {fmt(p.value)}</p>)}
       </div>
     );
-  };
+  }, []);
+
+  const accentHex = dark ? '#1A9070' : '#167A5E';
+  const blueHex = '#3B82F6';
+  const purpleHex = '#8B5CF6';
+  const redHex = dark ? '#EF4444' : '#DC2626';
+  const goldHex = '#9A7820';
+  const gridHex = dark ? 'rgba(255,255,255,0.06)' : '#E8E8E8';
+  const mutedHex = dark ? '#94A3B8' : '#6B7280';
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 20px' }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginBottom: '32px', flexWrap: 'wrap', gap: '12px',
-      }}>
-        <div>
-          <h1 style={{ fontSize: '28px', fontWeight: '700', margin: 0 }}>
-            STR<span style={{ color: theme.gold }}>Invest</span>Calc
-          </h1>
-          <p style={{ color: theme.textMuted, fontSize: '13px', marginTop: '4px' }}>
-            {formData.propertyType} in {formData.location}
-          </p>
+    <div style={{ minHeight: '100vh' }}>
+      <NavBar dark={dark} setDark={setDark} subtitle={`${formData.propertyType} in ${formData.location}`} />
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+          <button onClick={onEditAssumptions} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid var(--border-primary)', background: 'transparent', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>&larr; Edit Assumptions</button>
         </div>
-        <button onClick={onEditAssumptions} style={{
-          padding: '10px 20px', borderRadius: '8px', border: `1px solid ${theme.border}`,
-          background: 'transparent', color: theme.textMuted, fontSize: '13px', cursor: 'pointer',
-        }}>← Edit Assumptions</button>
-      </div>
 
-      {/* Metric Cards */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '16px', marginBottom: '32px',
-      }}>
-        <Card>
-          <SectionLabel>Hold Equity + Cash Flow</SectionLabel>
-          <div style={{ fontSize: '28px', fontWeight: '700', color: theme.accent }}>
-            {fmtK(hold.totalWealth)}
-          </div>
-          <p style={{ fontSize: '12px', color: theme.textMuted, marginTop: '4px' }}>
-            {sens.yearsToHold}-year total wealth
-          </p>
-        </Card>
-        <Card>
-          <SectionLabel>Sell & Invest Value</SectionLabel>
-          <div style={{ fontSize: '28px', fontWeight: '700', color: theme.blue }}>
-            {fmtK(sell.totalWealthAtEnd)}
-          </div>
-          <p style={{ fontSize: '12px', color: theme.textMuted, marginTop: '4px' }}>
-            Net proceeds invested at {sens.altReturn}%
-          </p>
-        </Card>
-        {show1031 && (
-          <Card>
-            <SectionLabel>1031 Exchange</SectionLabel>
-            <div style={{ fontSize: '28px', fontWeight: '700', color: theme.purple }}>
-              {fmtK(exch.totalWealth)}
-            </div>
-            <p style={{ fontSize: '12px', color: theme.textMuted, marginTop: '4px' }}>
-              Tax-deferred: {fmtK(exch.taxDeferred)}
-            </p>
-          </Card>
-        )}
-        <Card style={{ background: `rgba(${rec.color === theme.accent ? '22,122,94' : rec.color === theme.blue ? '59,130,246' : '139,92,246'}, 0.1)` }}>
-          <SectionLabel>Recommendation</SectionLabel>
-          <div style={{ fontSize: '24px', fontWeight: '700', color: rec.color }}>
-            {rec.text}
-          </div>
-          <p style={{ fontSize: '12px', color: theme.textMuted, marginTop: '4px' }}>
-            Advantage: {fmtK(Math.abs(hold.totalWealth - sell.totalWealthAtEnd))}
-          </p>
-        </Card>
-      </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 32 }}>
+          <Card><SectionLabel>Hold Equity + Cash Flow</SectionLabel><div style={{ fontSize: 28, fontWeight: 700, color: 'var(--accent)' }}>{fmtK(hold.totalWealth)}</div><p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{sens.yearsToHold}-year total wealth</p></Card>
+          <Card><SectionLabel>Sell &amp; Invest Value</SectionLabel><div style={{ fontSize: 28, fontWeight: 700, color: 'var(--blue)' }}>{fmtK(sell.totalWealthAtEnd)}</div><p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Net proceeds invested at {sens.altReturn}%</p></Card>
+          {show1031 && <Card><SectionLabel>1031 Exchange</SectionLabel><div style={{ fontSize: 28, fontWeight: 700, color: 'var(--purple)' }}>{fmtK(exch.totalWealth)}</div><p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Tax-deferred: {fmtK(exch.taxDeferred)}</p></Card>}
+          <Card style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-accent)' }}><SectionLabel>Recommendation</SectionLabel><div style={{ fontSize: 24, fontWeight: 700, color: rec.color }}>{rec.text}</div><p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Advantage: {fmtK(Math.abs(hold.totalWealth - sell.totalWealthAtEnd))}</p></Card>
+        </div>
 
-      {/* Main content: Charts + Sliders */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px' }}>
-        {/* Left: Charts */}
-        <div>
-          {/* Cumulative Wealth Chart */}
-          <Card style={{ marginBottom: '24px' }}>
-            <SectionLabel>Cumulative Wealth Comparison</SectionLabel>
-            <ResponsiveContainer width="100%" height={320}>
-              <LineChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={theme.border} />
-                <XAxis dataKey="year" stroke={theme.textMuted} fontSize={12}
-                  label={{ value: 'Year', position: 'insideBottom', offset: -5, fill: theme.textMuted }} />
-                <YAxis stroke={theme.textMuted} fontSize={11} tickFormatter={fmtK} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ fontSize: '12px' }} />
-                <Line type="monotone" dataKey="hold" name="Hold" stroke={theme.accent}
-                  strokeWidth={3} dot={false} activeDot={{ r: 5 }} />
-                <Line type="monotone" dataKey="sell" name="Sell & Invest" stroke={theme.blue}
-                  strokeWidth={3} dot={false} activeDot={{ r: 5 }} />
-                {show1031 && (
-                  <Line type="monotone" dataKey="exchange" name="1031 Exchange" stroke={theme.purple}
-                    strokeWidth={3} dot={false} activeDot={{ r: 5 }} />
-                )}
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
-
-          {/* Cash Flow Chart */}
-          <Card style={{ marginBottom: '24px' }}>
-            <SectionLabel>Annual Cash Flow Breakdown</SectionLabel>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={cashFlowData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={theme.border} />
-                <XAxis dataKey="year" stroke={theme.textMuted} fontSize={11} />
-                <YAxis stroke={theme.textMuted} fontSize={11} tickFormatter={fmtK} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ fontSize: '12px' }} />
-                <Bar dataKey="revenue" name="Revenue" fill={theme.accent} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expenses" name="Expenses" fill={theme.red} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="debtService" name="Debt Service" fill={theme.gold} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-
-          {/* Expense Pie + Sell Breakdown */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <Card>
-              <SectionLabel>Year 1 Expense Split</SectionLabel>
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie data={expensePieData} cx="50%" cy="50%" outerRadius={70} dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    labelLine={false} fontSize={11}>
-                    {expensePieData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(v) => fmt(v)} />
-                </PieChart>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24 }}>
+          <div>
+            <Card style={{ marginBottom: 24 }}>
+              <SectionLabel>Cumulative Wealth Comparison</SectionLabel>
+              <ResponsiveContainer width="100%" height={320}>
+                <LineChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridHex} />
+                  <XAxis dataKey="year" stroke={mutedHex} fontSize={12} label={{ value: 'Year', position: 'insideBottom', offset: -5, fill: mutedHex }} />
+                  <YAxis stroke={mutedHex} fontSize={11} tickFormatter={fmtK} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Line type="monotone" dataKey="hold" name="Hold" stroke={accentHex} strokeWidth={3} dot={false} activeDot={{ r: 5 }} />
+                  <Line type="monotone" dataKey="sell" name="Sell & Invest" stroke={blueHex} strokeWidth={3} dot={false} activeDot={{ r: 5 }} />
+                  {show1031 && <Line type="monotone" dataKey="exchange" name="1031 Exchange" stroke={purpleHex} strokeWidth={3} dot={false} activeDot={{ r: 5 }} />}
+                </LineChart>
               </ResponsiveContainer>
             </Card>
+
+            <Card style={{ marginBottom: 24 }}>
+              <SectionLabel>Annual Cash Flow Breakdown</SectionLabel>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={cashFlowData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridHex} />
+                  <XAxis dataKey="year" stroke={mutedHex} fontSize={11} />
+                  <YAxis stroke={mutedHex} fontSize={11} tickFormatter={fmtK} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="revenue" name="Revenue" fill={accentHex} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expenses" name="Expenses" fill={redHex} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="debtService" name="Debt Service" fill={goldHex} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <Card>
+                <SectionLabel>Year 1 Expense Split</SectionLabel>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie data={expensePieData} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={11}>
+                      {expensePieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip formatter={(v) => fmt(v)} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </Card>
+              <Card>
+                <SectionLabel>Sale Proceeds Breakdown</SectionLabel>
+                <div style={{ fontSize: 13, lineHeight: 2.2, color: 'var(--text-secondary)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Gross Equity</span><span>{fmt(sell.grossProceeds)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--red)' }}><span>&minus; Selling Costs</span><span>{fmt(sell.sellingCosts)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--red)' }}><span>&minus; Capital Gains Tax</span><span>{fmt(sell.capitalGainsTax)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-primary)', paddingTop: 8, marginTop: 8, fontWeight: 700, color: 'var(--accent)' }}><span>Net to Invest</span><span>{fmt(sell.netProceeds)}</span></div>
+                </div>
+              </Card>
+            </div>
+          </div>
+
+          <div>
             <Card>
-              <SectionLabel>Sale Proceeds Breakdown</SectionLabel>
-              <div style={{ fontSize: '13px', lineHeight: '2.2', color: theme.textSecondary }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Gross Equity</span><span>{fmt(sell.grossProceeds)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: theme.red }}>
-                  <span>− Selling Costs</span><span>{fmt(sell.sellingCosts)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: theme.red }}>
-                  <span>− Capital Gains Tax</span><span>{fmt(sell.capitalGainsTax)}</span>
-                </div>
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between',
-                  borderTop: `1px solid ${theme.border}`, paddingTop: '8px', marginTop: '8px',
-                  fontWeight: '700', color: theme.accent,
-                }}>
-                  <span>Net to Invest</span><span>{fmt(sell.netProceeds)}</span>
-                </div>
+              <SectionLabel>Sensitivity Sliders</SectionLabel>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>Adjust assumptions &mdash; charts update in real time.</p>
+              <Slider label="Rent Growth" min={-2} max={6} step={0.5} value={sens.rentGrowth} displayValue={`${sens.rentGrowth}%`} onChange={(e) => setSens({ ...sens, rentGrowth: parseFloat(e.target.value) })} />
+              <Slider label="Vacancy Rate" min={0} max={25} step={1} value={sens.vacancyRate} displayValue={`${sens.vacancyRate}%`} onChange={(e) => setSens({ ...sens, vacancyRate: parseFloat(e.target.value) })} />
+              <Slider label="Maintenance Mult" min={0.5} max={2.0} step={0.1} value={sens.maintenanceMult} displayValue={`${sens.maintenanceMult}\u00D7`} onChange={(e) => setSens({ ...sens, maintenanceMult: parseFloat(e.target.value) })} />
+              <Slider label="Appreciation" min={-1} max={6} step={0.5} value={sens.appreciation} displayValue={`${sens.appreciation}%`} onChange={(e) => setSens({ ...sens, appreciation: parseFloat(e.target.value) })} />
+              <Slider label="Alt. Return" min={2} max={12} step={0.5} value={sens.altReturn} displayValue={`${sens.altReturn}%`} onChange={(e) => setSens({ ...sens, altReturn: parseFloat(e.target.value) })} />
+              <Slider label="Years to Hold" min={1} max={10} step={1} value={sens.yearsToHold} displayValue={`${sens.yearsToHold} yrs`} onChange={(e) => setSens({ ...sens, yearsToHold: parseInt(e.target.value) })} />
+              <div style={{ marginTop: 16, padding: 12, borderRadius: 6, background: 'var(--gold-subtle)', border: '1px solid rgba(154,120,32,0.3)', fontSize: 11, color: 'var(--text-muted)' }}>
+                <strong>Tip:</strong> Drag sliders to stress-test your decision. Watch the recommendation change as assumptions shift.
               </div>
             </Card>
           </div>
         </div>
 
-        {/* Right: Sensitivity Sliders */}
-        <div>
-          <Card>
-            <SectionLabel>Sensitivity Sliders</SectionLabel>
-            <p style={{ fontSize: '12px', color: theme.textMuted, marginBottom: '20px' }}>
-              Adjust assumptions — charts update in real time.
-            </p>
-
-            <Slider label="Rent Growth" min={-2} max={6} step={0.5}
-              value={sens.rentGrowth} displayValue={`${sens.rentGrowth}%`}
-              onChange={(e) => setSens({ ...sens, rentGrowth: parseFloat(e.target.value) })} />
-
-            <Slider label="Vacancy Rate" min={0} max={25} step={1}
-              value={sens.vacancyRate} displayValue={`${sens.vacancyRate}%`}
-              onChange={(e) => setSens({ ...sens, vacancyRate: parseFloat(e.target.value) })} />
-
-            <Slider label="Maintenance Mult" min={0.5} max={2.0} step={0.1}
-              value={sens.maintenanceMult} displayValue={`${sens.maintenanceMult}×`}
-              onChange={(e) => setSens({ ...sens, maintenanceMult: parseFloat(e.target.value) })} />
-
-            <Slider label="Appreciation" min={-1} max={6} step={0.5}
-              value={sens.appreciation} displayValue={`${sens.appreciation}%`}
-              onChange={(e) => setSens({ ...sens, appreciation: parseFloat(e.target.value) })} />
-
-            <Slider label="Alt. Return" min={2} max={12} step={0.5}
-              value={sens.altReturn} displayValue={`${sens.altReturn}%`}
-              onChange={(e) => setSens({ ...sens, altReturn: parseFloat(e.target.value) })} />
-
-            <Slider label="Years to Hold" min={1} max={10} step={1}
-              value={sens.yearsToHold} displayValue={`${sens.yearsToHold} yrs`}
-              onChange={(e) => setSens({ ...sens, yearsToHold: parseInt(e.target.value) })} />
-
-            <div style={{
-              marginTop: '16px', padding: '12px', borderRadius: '6px',
-              background: `rgba(154, 120, 32, 0.1)`, border: `1px solid rgba(154, 120, 32, 0.3)`,
-              fontSize: '11px', color: theme.textMuted,
-            }}>
-              <strong>Tip:</strong> Drag sliders to stress-test your decision. Watch the recommendation change as assumptions shift.
-            </div>
-          </Card>
-        </div>
-      </div>
-
-      {/* Year-by-Year Table */}
-      <Card style={{ marginTop: '24px', overflowX: 'auto' }}>
-        <SectionLabel>Year-by-Year Comparison</SectionLabel>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-          <thead>
-            <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
-              {['Year', 'Property Value', 'Hold Equity', 'Cash Flow', 'Hold Total', 'Sell Invested', show1031 && '1031 Total']
-                .filter(Boolean).map(h => (
-                <th key={h} style={{
-                  padding: '10px 8px', textAlign: 'right', color: theme.gold,
-                  fontWeight: '700', letterSpacing: '0.05em', fontSize: '10px',
-                  textTransform: 'uppercase',
-                }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {hold.yearlyData.map((d, i) => (
-              <tr key={i} style={{ borderBottom: `1px solid ${theme.border}` }}>
-                <td style={{ padding: '8px', color: theme.textMuted }}>{d.year}</td>
-                <td style={{ padding: '8px', textAlign: 'right', color: theme.textSecondary }}>{fmtK(d.propertyValue)}</td>
-                <td style={{ padding: '8px', textAlign: 'right', color: theme.accent }}>{fmtK(d.equity)}</td>
-                <td style={{ padding: '8px', textAlign: 'right', color: d.netCashFlow >= 0 ? theme.green : theme.red }}>
-                  {fmtK(d.netCashFlow)}
-                </td>
-                <td style={{ padding: '8px', textAlign: 'right', color: theme.accent, fontWeight: '600' }}>
-                  {fmtK(d.equity + d.cumulativeCashFlow)}
-                </td>
-                <td style={{ padding: '8px', textAlign: 'right', color: theme.blue }}>
-                  {fmtK(sell.yearlyData[i]?.investedValue)}
-                </td>
-                {show1031 && (
-                  <td style={{ padding: '8px', textAlign: 'right', color: theme.purple }}>
-                    {fmtK((exch.yearlyData[i]?.equity || 0) + (exch.yearlyData[i]?.cumulativeCashFlow || 0))}
-                  </td>
-                )}
+        <Card style={{ marginTop: 24, overflowX: 'auto' }}>
+          <SectionLabel>Year-by-Year Comparison</SectionLabel>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border-primary)' }}>
+                {['Year', 'Property Value', 'Hold Equity', 'Cash Flow', 'Hold Total', 'Sell Invested', show1031 && '1031 Total'].filter(Boolean).map(h => (
+                  <th key={h} style={{ padding: '10px 8px', textAlign: 'right', color: 'var(--gold)', fontWeight: 700, letterSpacing: '0.05em', fontSize: 10, textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace" }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+            </thead>
+            <tbody>
+              {hold.yearlyData.map((d, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid var(--border-primary)' }}>
+                  <td style={{ padding: 8, color: 'var(--text-muted)' }}>{d.year}</td>
+                  <td style={{ padding: 8, textAlign: 'right', color: 'var(--text-secondary)' }}>{fmtK(d.propertyValue)}</td>
+                  <td style={{ padding: 8, textAlign: 'right', color: 'var(--accent)' }}>{fmtK(d.equity)}</td>
+                  <td style={{ padding: 8, textAlign: 'right', color: d.netCashFlow >= 0 ? 'var(--green)' : 'var(--red)' }}>{fmtK(d.netCashFlow)}</td>
+                  <td style={{ padding: 8, textAlign: 'right', color: 'var(--accent)', fontWeight: 600 }}>{fmtK(d.equity + d.cumulativeCashFlow)}</td>
+                  <td style={{ padding: 8, textAlign: 'right', color: 'var(--blue)' }}>{fmtK(sell.yearlyData[i]?.investedValue)}</td>
+                  {show1031 && <td style={{ padding: 8, textAlign: 'right', color: 'var(--purple)' }}>{fmtK((exch.yearlyData[i]?.equity || 0) + (exch.yearlyData[i]?.cumulativeCashFlow || 0))}</td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
 
-      {/* Footer */}
-      <div style={{
-        textAlign: 'center', padding: '32px 0', fontSize: '11px',
-        color: theme.textMuted, lineHeight: '2',
-      }}>
-        <p>Joe Mori & Dino Amato, Real Broker NH. Each office is independently owned and operated.</p>
-        <p>This tool does not constitute financial or investment advice. Consult a qualified real estate professional before making investment decisions.</p>
-        <p>By using this platform, you consent to the collection of your email address and preferences for the purpose of delivering personalized market analysis. We do not sell or share your information with third parties.</p>
+        <VHGFooter dark={dark} />
       </div>
     </div>
   );
 };
 
-// ═══════════════════════════════════════════════════════════════
-// MAIN APP - STATE MACHINE
-// ═══════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
+   MAIN APP
+   ═══════════════════════════════════════════════════════════════ */
 
 function App() {
+  const [dark, setDark] = useState(() => {
+    try { const s = localStorage.getItem('vhg-theme'); return s ? s === 'dark' : true; }
+    catch (_e) { return true; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('vhg-theme', dark ? 'dark' : 'light'); } catch (_e) { /* noop */ }
+  }, [dark]);
+
   const [view, setView] = useState('questionnaire');
   const [formData, setFormData] = useState(null);
   const [holdResult, setHoldResult] = useState(null);
@@ -1016,43 +891,36 @@ function App() {
   const [exchangeResult, setExchangeResult] = useState(null);
 
   const handleAnalyze = useCallback((data) => {
-    // Normalize percentage inputs
-    const normalized = {
+    const norm = {
       ...data,
       vacancyRate: parseFloat(data.vacancyRate) || 10,
       mortgageRate: (parseFloat(data.mortgageRate) || 0) / 100,
       annualAppreciation: (parseFloat(data.annualAppreciation) || 3) / 100,
       alternativeReturn: (parseFloat(data.alternativeReturn) || 7) / 100,
     };
-
-    const hold = calculateHoldScenario(normalized, 10);
-    const sell = calculateSellScenario(normalized, 10, normalized.alternativeReturn);
-    const exch = data.exitStrategy === '1031' ? calculate1031Scenario(normalized, 10) : null;
-
-    setFormData(normalized);
-    setHoldResult(hold);
-    setSellResult(sell);
-    setExchangeResult(exch);
+    setFormData(norm);
+    setHoldResult(calculateHoldScenario(norm, 10));
+    setSellResult(calculateSellScenario(norm, 10, norm.alternativeReturn));
+    setExchangeResult(data.exitStrategy === '1031' ? calculate1031Scenario(norm, 10) : null);
     setView('dashboard');
   }, []);
 
-  const handleEditAssumptions = useCallback(() => {
-    setView('questionnaire');
-  }, []);
+  const themeVars = dark ? darkVars : lightVars;
 
-  if (view === 'dashboard' && holdResult && sellResult) {
-    return (
-      <Dashboard
-        formData={formData}
-        holdResult={holdResult}
-        sellResult={sellResult}
-        exchangeResult={exchangeResult}
-        onEditAssumptions={handleEditAssumptions}
-      />
-    );
-  }
-
-  return <Questionnaire onComplete={handleAnalyze} initialData={formData} />;
+  return (
+    <div style={{
+      ...themeVars, background: 'var(--bg-primary)', color: 'var(--text-primary)',
+      minHeight: '100vh', fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    }}>
+      {view === 'dashboard' && holdResult && sellResult ? (
+        <Dashboard formData={formData} holdResult={holdResult} sellResult={sellResult}
+          exchangeResult={exchangeResult} onEditAssumptions={() => setView('questionnaire')}
+          dark={dark} setDark={setDark} />
+      ) : (
+        <Questionnaire onComplete={handleAnalyze} initialData={formData} dark={dark} setDark={setDark} />
+      )}
+    </div>
+  );
 }
 
 export default App;
