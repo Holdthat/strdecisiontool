@@ -180,7 +180,7 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
       </div>
       {/* Expanded: sliders */}
       {slidersOpen && (
-        <div style={{marginTop:16,display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:8}}>
+        <div style={{marginTop:16,display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8}}>
           <Slider label="Vacancy" min={0} max={100} step={1} value={sens.vacancyRate} displayValue={`${Math.round(sens.vacancyRate)}%`} tip="Percentage of the year the property sits empty. National STR average is 25-40%." onChange={e=>setSens({...sens,vacancyRate:e.target.value})}/>
           <Slider label="Appreciation" min={-5} max={15} step={1} value={sens.appreciation} displayValue={`${Math.round(sens.appreciation)}%`} tip="Annual property value growth. US historical average is ~3-4%. Hot markets can see 8-10%." onChange={e=>setSens({...sens,appreciation:e.target.value})}/>
           <Slider label="Alt. Return" min={0} max={15} step={1} value={sens.altReturn} displayValue={`${Math.round(sens.altReturn)}%`} tip="What you'd earn if you sold and invested the proceeds elsewhere. S&P 500 averages ~10% historically." onChange={e=>setSens({...sens,altReturn:e.target.value})}/>
@@ -351,32 +351,93 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
 
   const renderMortgage = () => {
     const results = mortScenarios.map(s => ({...s, calc:calculateMortgageScenario(s.principal, s.rate, s.term)}));
-    return (
-      <Card>
-        <SectionLabel>Mortgage Comparison</SectionLabel>
+    // Build comparison chart data
+    const maxYears = Math.max(...results.map(r=>r.term));
+    const balanceChart = [];
+    for(let y=1;y<=Math.min(maxYears,30);y++){
+      const pt = {year:y};
+      results.forEach((r,i)=>{
+        const d = r.calc.yearlyData[y-1];
+        if(d){pt[`bal${i}`]=d.remainingBalance;pt[`prin${i}`]=d.principalPaid;pt[`int${i}`]=d.interestPaid;}
+      });
+      balanceChart.push(pt);
+    }
+    // Payment comparison for bar chart
+    const paymentCompare = results.map((r,i)=>({name:r.label,monthly:r.calc.monthlyPayment,totalInterest:r.calc.totalInterest,totalPaid:r.calc.totalPaid}));
+
+    return (<>
+      <Card style={{marginBottom:16}}>
+        <SectionLabel tip="Compare loan structures side by side. Edit inputs to see charts update.">Mortgage Comparison</SectionLabel>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:12,marginBottom:16}}>
           {results.map((s,i)=>(
             <div key={i} style={{padding:14,borderRadius:8,background:'var(--bg-primary)',border:'1px solid var(--border-primary)'}}>
-              <div style={{fontSize:13,fontWeight:700,color:'var(--text-primary)',marginBottom:8}}>{s.label}</div>
+              <div style={{fontSize:14,fontWeight:700,color:'var(--text-primary)',marginBottom:8}}>{s.label}</div>
               <InputField label="Principal" name="p" value={s.principal} onChange={e=>{const n=[...mortScenarios];n[i].principal=Number(e.target.value);setMortScenarios(n);}} type="number" prefix="$"/>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
                 <InputField label="Rate" name="r" value={s.rate} onChange={e=>{const n=[...mortScenarios];n[i].rate=Number(e.target.value);setMortScenarios(n);}} type="number" suffix="%"/>
                 <InputField label="Term" name="t" value={s.term} onChange={e=>{const n=[...mortScenarios];n[i].term=Number(e.target.value);setMortScenarios(n);}} type="number" suffix="yrs"/>
               </div>
               <div style={{borderTop:'1px solid var(--border-primary)',paddingTop:8,marginTop:8}}>
-                <div style={{fontSize:20,fontWeight:700,color:i===0?'var(--accent)':'var(--blue)'}}>{fmt(s.calc.monthlyPayment)}<span style={{fontSize:11,color:'var(--text-muted)'}}>/mo</span></div>
-                <div style={{fontSize:11,color:'var(--text-muted)'}}>Total interest: {fmtK(s.calc.totalInterest)}</div>
+                <div style={{fontSize:22,fontWeight:700,color:i===0?'var(--accent)':'var(--blue)'}}>{fmt(s.calc.monthlyPayment)}<span style={{fontSize:12,color:'var(--text-muted)'}}>/mo</span></div>
+                <div style={{fontSize:12,color:'var(--text-muted)'}}>Total interest: {fmtK(s.calc.totalInterest)}</div>
               </div>
             </div>
           ))}
         </div>
         {results.length>=2&&results[0].calc.monthlyPayment>0&&(
-          <div style={{padding:12,borderRadius:8,background:'var(--bg-subtle)',border:'1px solid var(--border-accent)',fontSize:13,color:'var(--text-secondary)'}}>
+          <div style={{padding:12,borderRadius:8,background:'var(--bg-subtle)',border:'1px solid var(--border-accent)',fontSize:14,color:'var(--text-secondary)'}}>
             <strong>{results[1].label}</strong> saves <strong style={{color:'var(--accent)'}}>{fmt(Math.abs(results[0].calc.monthlyPayment-results[1].calc.monthlyPayment))}/mo</strong> ({fmt(Math.abs(results[0].calc.totalInterest-results[1].calc.totalInterest))} total interest {results[1].calc.totalInterest<results[0].calc.totalInterest?'saved':'more'})
           </div>
         )}
       </Card>
-    );
+
+      {/* Remaining Balance Over Time */}
+      <Card style={{marginBottom:16}}>
+        <SectionLabel>Remaining Balance Over Time</SectionLabel>
+        <ResponsiveContainer width="100%" height={260}>
+          <AreaChart data={balanceChart} margin={{top:10,right:10,left:0,bottom:0}}>
+            <CartesianGrid strokeDasharray="3 3" stroke={colors.grid}/>
+            <XAxis dataKey="year" stroke={colors.muted} fontSize={11} label={{value:'Year',position:'insideBottom',offset:-3,fill:colors.muted,fontSize:10}}/>
+            <YAxis stroke={colors.muted} fontSize={10} tickFormatter={fmtK}/>
+            <Tooltip content={<ChartTooltip/>}/>
+            <Legend wrapperStyle={{fontSize:11}}/>
+            {results.map((r,i)=><Area key={i} type="monotone" dataKey={`bal${i}`} name={r.label} stroke={i===0?colors.accent:colors.blue} fill={i===0?colors.accent:colors.blue} fillOpacity={0.12} strokeWidth={2}/>)}
+          </AreaChart>
+        </ResponsiveContainer>
+      </Card>
+
+      {/* Annual Principal vs Interest */}
+      <Card style={{marginBottom:16}}>
+        <SectionLabel>Annual Principal vs Interest (Scenario 1)</SectionLabel>
+        <ResponsiveContainer width="100%" height={240}>
+          <ComposedChart data={results[0]?.calc.yearlyData.slice(0,30)||[]} margin={{top:10,right:10,left:0,bottom:0}}>
+            <CartesianGrid strokeDasharray="3 3" stroke={colors.grid}/>
+            <XAxis dataKey="year" stroke={colors.muted} fontSize={10}/>
+            <YAxis stroke={colors.muted} fontSize={10} tickFormatter={fmtK}/>
+            <Tooltip content={<ChartTooltip/>}/>
+            <Legend wrapperStyle={{fontSize:11}}/>
+            <Bar dataKey="principalPaid" name="Principal" stackId="a" fill={colors.accent} radius={[0,0,0,0]}/>
+            <Bar dataKey="interestPaid" name="Interest" stackId="a" fill={colors.red} radius={[3,3,0,0]}/>
+          </ComposedChart>
+        </ResponsiveContainer>
+      </Card>
+
+      {/* Monthly Payment Comparison */}
+      <Card>
+        <SectionLabel>Payment Comparison</SectionLabel>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={paymentCompare} layout="vertical" margin={{top:10,right:20,left:60,bottom:0}}>
+            <CartesianGrid strokeDasharray="3 3" stroke={colors.grid}/>
+            <XAxis type="number" stroke={colors.muted} fontSize={10} tickFormatter={fmtK}/>
+            <YAxis type="category" dataKey="name" stroke={colors.muted} fontSize={12}/>
+            <Tooltip content={<ChartTooltip/>}/>
+            <Legend wrapperStyle={{fontSize:11}}/>
+            <Bar dataKey="monthly" name="Monthly Payment" fill={colors.accent} radius={[0,3,3,0]}/>
+            <Bar dataKey="totalInterest" name="Total Interest" fill={colors.gold} radius={[0,3,3,0]}/>
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+    </>);
   };
 
   const renderSnapshots = () => (
@@ -501,7 +562,7 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
     </div>
   );
 
-  // ── Settings tab ──
+  // ── Admin Settings (hidden, ?admin=true only) ──
   const renderSettings = () => {
     const saveSettings = () => {
       try{localStorage.setItem('vhg-gemini-key',geminiKey);}catch(_e){}
@@ -510,9 +571,12 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
     };
     return (
       <Card>
-        <SectionLabel>Settings</SectionLabel>
+        <SectionLabel>Admin Settings</SectionLabel>
+        <div style={{padding:'10px 14px',borderRadius:8,background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',marginBottom:20,fontSize:13,color:'var(--text-muted)'}}>
+          This panel is only visible to administrators via <code style={{color:'var(--accent)'}}>?admin=true</code> URL parameter. End users will never see this tab.
+        </div>
         <p style={{fontSize:14,color:'var(--text-muted)',marginBottom:20,lineHeight:1.6}}>
-          Configure API keys for AI features. Claude (Anthropic) is built in and works automatically. To use Gemini, add your Google AI API key below.
+          Configure API keys for AI features. Keys are stored in the browser's localStorage on this device only.
         </p>
 
         <div style={{padding:16,borderRadius:8,background:'var(--bg-primary)',border:'1px solid var(--border-primary)',marginBottom:16}}>
@@ -547,6 +611,9 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
     );
   };
 
+  // Admin mode — accessed via ?admin=true in URL (for site owner only)
+  const isAdmin = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('admin') === 'true';
+
   // ── Tab config ──
   const tabs = [
     {id:'overview',label:'Overview'},
@@ -556,7 +623,7 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
       {id:'mortgage',label:'Mortgage'},
       {id:'snapshots',label:'What-If'},
       {id:'ai',label:'AI Summary'},
-      {id:'settings',label:'Settings'},
+      ...(isAdmin ? [{id:'settings',label:'Admin'}] : []),
     ] : []),
     {id:'how',label:'How It Works'},
   ];
@@ -597,7 +664,7 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
       {activeTab==='mortgage'&&isPro&&renderMortgage()}
       {activeTab==='snapshots'&&isPro&&renderSnapshots()}
       {activeTab==='ai'&&isPro&&renderAI()}
-      {activeTab==='settings'&&isPro&&renderSettings()}
+      {activeTab==='settings'&&isPro&&isAdmin&&renderSettings()}
     </div>
   );
 }

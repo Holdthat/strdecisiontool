@@ -69,24 +69,52 @@ export const TabBar = ({tabs, active, onChange}) => (
 // ═══════════════════════════════════════════════════════════
 // FORM FIELDS — larger inputs
 // ═══════════════════════════════════════════════════════════
-export const InputField = ({label,name,value,onChange,type='text',prefix,suffix,placeholder,error,tip}) => (
-  <div style={{marginBottom:18}}>
-    <label style={{display:'flex',alignItems:'center',gap:2,fontSize:14,fontWeight:700,color:'var(--text-secondary)',marginBottom:8,fontFamily:"'JetBrains Mono',monospace",letterSpacing:'0.04em',textTransform:'uppercase'}}>
-      {label}
-      {tip && <Tooltip_ text={tip}><span/></Tooltip_>}
-    </label>
-    <div style={{position:'relative'}}>
-      {prefix&&<span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'var(--text-muted)',fontSize:16}}>{prefix}</span>}
-      <input type={type} name={name} value={value} onChange={onChange} placeholder={placeholder} style={{
-        width:'100%',padding:'12px 14px',paddingLeft:prefix?32:14,paddingRight:suffix?44:14,
-        background:'var(--input-bg)',border:`1px solid ${error?'var(--red)':'var(--border-primary)'}`,
-        borderRadius:8,color:'var(--text-primary)',fontSize:16,outline:'none',fontFamily:"'JetBrains Mono',monospace",
-      }}/>
-      {suffix&&<span style={{position:'absolute',right:14,top:'50%',transform:'translateY(-50%)',color:'var(--text-muted)',fontSize:14}}>{suffix}</span>}
+export const InputField = ({label,name,value,onChange,type='text',prefix,suffix,placeholder,error,tip}) => {
+  // Format display value with commas for dollar fields
+  const isDollar = prefix === '$';
+  const displayVal = isDollar && value && !isNaN(value) 
+    ? Number(value).toLocaleString('en-US') 
+    : value;
+  
+  const handleChange = (e) => {
+    if (isDollar) {
+      // Strip commas before passing to parent
+      const raw = e.target.value.replace(/,/g, '');
+      if (raw === '' || !isNaN(raw)) {
+        onChange({target:{name:e.target.name, value:raw}});
+      }
+    } else {
+      onChange(e);
+    }
+  };
+
+  return (
+    <div style={{marginBottom:18}}>
+      <label style={{display:'flex',alignItems:'center',gap:2,fontSize:14,fontWeight:700,color:'var(--text-secondary)',marginBottom:8,fontFamily:"'JetBrains Mono',monospace",letterSpacing:'0.04em',textTransform:'uppercase'}}>
+        {label}
+        {tip && <Tooltip_ text={tip}><span/></Tooltip_>}
+      </label>
+      <div style={{position:'relative'}}>
+        {prefix&&<span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'var(--text-muted)',fontSize:16}}>{prefix}</span>}
+        <input 
+          type={isDollar ? 'text' : type} 
+          inputMode={isDollar ? 'numeric' : undefined}
+          name={name} 
+          value={displayVal} 
+          onChange={handleChange} 
+          placeholder={placeholder} 
+          style={{
+            width:'100%',padding:'12px 14px',paddingLeft:prefix?32:14,paddingRight:suffix?44:14,
+            background:'var(--input-bg)',border:`1px solid ${error?'var(--red)':'var(--border-primary)'}`,
+            borderRadius:8,color:'var(--text-primary)',fontSize:16,outline:'none',fontFamily:"'JetBrains Mono',monospace",
+          }}
+        />
+        {suffix&&<span style={{position:'absolute',right:14,top:'50%',transform:'translateY(-50%)',color:'var(--text-muted)',fontSize:14}}>{suffix}</span>}
+      </div>
+      {error&&<p style={{color:'var(--red)',fontSize:12,marginTop:4}}>{error}</p>}
     </div>
-    {error&&<p style={{color:'var(--red)',fontSize:12,marginTop:4}}>{error}</p>}
-  </div>
-);
+  );
+};
 
 export const SelectField = ({label,name,value,onChange,options,tip}) => (
   <div style={{marginBottom:18}}>
@@ -103,18 +131,18 @@ export const SelectField = ({label,name,value,onChange,options,tip}) => (
 export const Slider = ({label,min,max,step,value,onChange,displayValue,suffix='%',tip}) => {
   const pct = Math.max(0,Math.min(100,((value-min)/(max-min))*100));
   return (
-    <div style={{marginBottom:20,padding:16,background:'var(--bg-card)',borderRadius:8,border:'1px solid var(--border-primary)'}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-        <span style={{display:'flex',alignItems:'center',gap:4,fontFamily:"'JetBrains Mono',monospace",fontSize:14,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--gold)'}}>
+    <div style={{marginBottom:12,padding:'12px 14px',background:'var(--bg-card)',borderRadius:8,border:'1px solid var(--border-primary)'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+        <span style={{display:'flex',alignItems:'center',gap:4,fontFamily:"'JetBrains Mono',monospace",fontSize:13,fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--gold)'}}>
           {label}{tip&&<Tooltip_ text={tip}><span/></Tooltip_>}
         </span>
-        <span style={{fontSize:22,fontWeight:700,color:'var(--accent)',fontFamily:"'JetBrains Mono',monospace"}}>{displayValue}</span>
+        <span style={{fontSize:20,fontWeight:700,color:'var(--accent)',fontFamily:"'JetBrains Mono',monospace"}}>{displayValue}</span>
       </div>
       <input type="range" min={min} max={max} step={step} value={value}
         onChange={e=>{const raw=Number(e.target.value);const rounded=Math.round(raw/step)*step;onChange({target:{value:rounded}});}}
-        style={{width:'100%',height:8,borderRadius:4,background:`linear-gradient(to right,var(--accent) 0%,var(--accent) ${pct}%,var(--border-primary) ${pct}%,var(--border-primary) 100%)`}}
+        style={{width:'100%',height:6,borderRadius:3,background:`linear-gradient(to right,var(--accent) 0%,var(--accent) ${pct}%,var(--border-primary) ${pct}%,var(--border-primary) 100%)`}}
       />
-      <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'var(--text-faint)',marginTop:6}}>
+      <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'var(--text-faint)',marginTop:4}}>
         <span>{min}{suffix}</span><span>{max}{suffix}</span>
       </div>
     </div>
