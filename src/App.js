@@ -5,8 +5,7 @@ import React, { useState } from 'react';
 import { 
   calculateHoldScenario, 
   calculateSellScenario, 
-  compareScenarios,
-  round 
+  compareScenarios
 } from './utils/calculations';
 import { 
   calculateOneZeroThreeOneScenario, 
