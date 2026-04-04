@@ -360,7 +360,7 @@ export const ProGate = ({onUnlock,onClose}) => {
 
         {step==='done' && (
           <div style={{textAlign:'center',padding:'40px 0'}}>
-            <div style={{fontSize:48,marginBottom:16}}>\u2713</div>
+            <div style={{fontSize:48,marginBottom:16}}>✓</div>
             <div style={{fontSize:22,fontWeight:700,color:'var(--accent)'}}>Pro Unlocked!</div>
             <p style={{fontSize:15,color:'var(--text-muted)',marginTop:8}}>Welcome, {name}. All features are now active.</p>
           </div>

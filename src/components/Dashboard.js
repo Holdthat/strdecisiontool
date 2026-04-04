@@ -143,27 +143,21 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
     };
     const prompt = `You are a real estate investment analyst. ${presetInstructions[aiPreset]||''} Tone: ${aiTone}. Length: ${aiLength} (${lengthCfg?.tokens||400} tokens max). Data: ${baseData}`;
     try {
-      if (aiProvider === 'claude') {
-        const resp = await fetch('https://api.anthropic.com/v1/messages', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:lengthCfg?.tokens||400,messages:[{role:'user',content:prompt}]}),
-        });
-        const data = await resp.json();
-        setAiSummary(data.content?.[0]?.text || 'Unable to generate summary.');
+      const key = geminiKey || (()=>{try{return localStorage.getItem('vhg-gemini-key')||'';}catch(_e){return '';}})();
+      const resp = await fetch('/api/ai-summary', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          provider: aiProvider,
+          prompt,
+          maxTokens: lengthCfg?.tokens||400,
+          ...(aiProvider==='gemini' ? {geminiKey:key} : {}),
+        }),
+      });
+      const data = await resp.json();
+      if (data.text) {
+        setAiSummary(data.text);
       } else {
-        // Gemini
-        const key = geminiKey || (()=>{try{return localStorage.getItem('vhg-gemini-key')||'';}catch(_e){return '';}})();
-        if (!key) {
-          setAiSummary('No Gemini API key found. Go to the Settings tab to add your free key from aistudio.google.com/apikey');
-        } else {
-          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`, {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:lengthCfg?.tokens||400}}),
-          });
-          const data = await resp.json();
-          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-          setAiSummary(text || 'Gemini returned no content. Check your API key in Settings.');
-        }
+        setAiSummary(data.error || 'Unable to generate summary.');
       }
     } catch(err) { setAiSummary('AI summary unavailable. Check your connection and try again.'); }
     setAiLoading(false);
