@@ -1,24 +1,8 @@
-// src/utils/StorageManager.js
-// localStorage management for scenario persistence
-
 export function saveAnalysis(name, formData, scenarios, comparison) {
   const analyses = loadAllAnalyses();
-  
-  const newAnalysis = {
-    id: Date.now().toString(),
-    name,
-    timestamp: new Date().toISOString(),
-    formData,
-    scenarios,
-    comparison
-  };
-  
+  const newAnalysis = { id: Date.now().toString(), name, timestamp: new Date().toISOString(), formData, scenarios, comparison };
   analyses.push(newAnalysis);
-  
-  if (analyses.length > 50) {
-    analyses.shift();
-  }
-  
+  if (analyses.length > 50) analyses.shift();
   localStorage.setItem('strinvestcalc-analyses', JSON.stringify(analyses));
   return newAnalysis;
 }
