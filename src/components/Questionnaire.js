@@ -16,7 +16,16 @@ export default function Questionnaire({onComplete, initialData, dark}) {
   const totalSteps = 4;
   const [form, setForm] = useState(initialData || defaultForm);
   const [errors, setErrors] = useState({});
-  const hc = e => {setForm({...form,[e.target.name]:e.target.value}); if(errors[e.target.name]) setErrors({...errors,[e.target.name]:null});};
+  const hc = e => {
+    const updated = {...form,[e.target.name]:e.target.value};
+    // Auto-calculate mortgage years remaining when years owned changes
+    if(e.target.name==='yearsOwned') {
+      const yrsOwned = parseInt(e.target.value)||0;
+      updated.mortgageYearsRemaining = String(Math.max(0, 30 - yrsOwned));
+    }
+    setForm(updated);
+    if(errors[e.target.name]) setErrors({...errors,[e.target.name]:null});
+  };
 
   const validate = () => {
     const e = {};
@@ -70,7 +79,7 @@ export default function Questionnaire({onComplete, initialData, dark}) {
             <InputField label="Mortgage Balance" name="mortgageBalance" value={form.mortgageBalance} onChange={hc} type="number" prefix="$" tip="Current outstanding loan balance. Check your latest statement."/>
             <InputField label="Interest Rate" name="mortgageRate" value={form.mortgageRate} onChange={hc} type="number" suffix="%" tip="Annual interest rate on your mortgage."/>
           </div>
-          <InputField label="Years Remaining" name="mortgageYearsRemaining" value={form.mortgageYearsRemaining} onChange={hc} type="number" suffix="yrs" tip="How many years left on your mortgage term."/>
+          <InputField label="Years Remaining" name="mortgageYearsRemaining" value={form.mortgageYearsRemaining} onChange={hc} type="number" suffix="yrs" tip="Auto-calculated as 30 minus years owned. Edit if your original term was different (e.g., 15-year mortgage)."/>
           <SectionLabel tip="Component ages determine when major replacement costs will hit.">Property Condition</SectionLabel>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
             <InputField label="Roof Age" name="roofAge" value={form.roofAge} onChange={hc} type="number" suffix="yrs" tip="Roofs typically last 25-30 years. Replacement costs ~4% of property value."/>

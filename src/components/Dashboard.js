@@ -513,7 +513,7 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
           <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:12,borderRadius:8,border:`1.5px solid ${compareSelected.includes(i)?COMPARE_COLORS[compareSelected.indexOf(i)]||'var(--accent)':'var(--border-primary)'}`,marginBottom:8,background:compareSelected.includes(i)?'var(--bg-subtle)':'transparent',transition:'all 0.15s'}}>
             {/* Checkbox */}
             <div onClick={()=>toggleCompare(i)} style={{width:22,height:22,borderRadius:4,border:`2px solid ${compareSelected.includes(i)?COMPARE_COLORS[compareSelected.indexOf(i)]:'var(--border-primary)'}`,background:compareSelected.includes(i)?COMPARE_COLORS[compareSelected.indexOf(i)]:'transparent',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'#fff',fontSize:14,fontWeight:700}}>
-              {compareSelected.includes(i)&&'\u2713'}
+              {compareSelected.includes(i)&&'✓'}
             </div>
             {/* Info */}
             <div style={{flex:1,minWidth:0}}>
