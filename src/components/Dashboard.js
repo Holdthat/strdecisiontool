@@ -33,10 +33,24 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
     {label:'Refi Option',principal:parseFloat(formData.mortgageBalance)||0,rate:5.5,term:30},
   ]);
 
-  // AI Summary
+  // AI Summary with user controls
   const [aiSummary, setAiSummary] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiProvider, setAiProvider] = useState('claude');
+  const [aiPreset, setAiPreset] = useState('investor-brief');
+  const [aiTone, setAiTone] = useState('professional');
+  const [aiLength, setAiLength] = useState('medium');
+
+  const AI_PRESETS = [
+    {value:'investor-brief',label:'\uD83D\uDCBC Investor Brief',desc:'Concise analysis for decision-makers. Numbers-heavy, bottom-line focused.'},
+    {value:'partner-explainer',label:'\uD83E\uDD1D Partner Explainer',desc:'Plain English for a spouse or partner. Avoids jargon, explains trade-offs clearly.'},
+    {value:'cpa-memo',label:'\uD83D\uDCCB CPA Memo',desc:'Tax-focused summary for your accountant. Depreciation, capital gains, 1031 implications.'},
+    {value:'risk-assessment',label:'\u26A0\uFE0F Risk Assessment',desc:'What could go wrong? Stress-tests assumptions and flags vulnerabilities.'},
+    {value:'market-letter',label:'\uD83D\uDCE8 Client Market Letter',desc:'Polished summary suitable for sharing with clients or in a newsletter.'},
+    {value:'quick-take',label:'\u26A1 Quick Take',desc:'One paragraph. The fastest possible read.'},
+  ];
+  const AI_TONES = [{value:'professional',label:'Professional'},{value:'conversational',label:'Conversational'},{value:'technical',label:'Technical'},{value:'encouraging',label:'Encouraging'}];
+  const AI_LENGTHS = [{value:'short',label:'Short (2-3 sentences)',tokens:200},{value:'medium',label:'Medium (1 paragraph)',tokens:400},{value:'detailed',label:'Detailed (2-3 paragraphs)',tokens:800}];
 
   // ── Core calculations ──
   const results = useMemo(() => {
@@ -104,12 +118,23 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
 
   const generateAI = async () => {
     setAiLoading(true);
-    const prompt = `You are a real estate investment analyst. Based on these numbers for a ${formData.propertyType} in ${formData.location}: Current Value: ${fmt(formData.currentValue)}, Purchase Price: ${fmt(formData.purchasePrice)}, Annual Rent: ${fmt(formData.annualRent)}, Expenses: ${fmt(formData.annualExpenses)}, Vacancy: ${sens.vacancyRate}%, Mortgage: ${fmt(formData.mortgageBalance)} at ${(parseFloat(formData.mortgageRate)*100).toFixed(1)}%, Hold ${sens.yearsToHold}yr Total: ${fmtK(hold.totalWealth)}, Sell & Invest: ${fmtK(sell.totalWealthAtEnd)}${show1031?`, 1031: ${fmtK(exch.totalWealth)}`:''}. Recommendation: ${rec.text}. Write 3-4 sentences. Be specific with numbers. End with the key risk.`;
+    const preset = AI_PRESETS.find(p=>p.value===aiPreset);
+    const lengthCfg = AI_LENGTHS.find(l=>l.value===aiLength);
+    const baseData = `Property: ${formData.propertyType} in ${formData.location}. Value: ${fmt(formData.currentValue)}, Purchase: ${fmt(formData.purchasePrice)}, Rent: ${fmt(formData.annualRent)}, Expenses: ${fmt(formData.annualExpenses)}, Vacancy: ${sens.vacancyRate}%, Mortgage: ${fmt(formData.mortgageBalance)} at ${(parseFloat(formData.mortgageRate)*100).toFixed(1)}%. Hold ${sens.yearsToHold}yr: ${fmtK(hold.totalWealth)}, Sell: ${fmtK(sell.totalWealthAtEnd)}${show1031?`, 1031: ${fmtK(exch.totalWealth)}`:''}. Rec: ${rec.text}, advantage ${fmtK(Math.abs(hold.totalWealth-sell.totalWealthAtEnd))}.`;
+    const presetInstructions = {
+      'investor-brief':'Write a concise investment brief. Lead with the recommendation and key numbers. Include ROI metrics. End with the single biggest risk factor.',
+      'partner-explainer':'Explain this like you\'re talking to someone\'s spouse who isn\'t in real estate. No jargon. Use simple comparisons. Help them understand the trade-offs of holding vs selling.',
+      'cpa-memo':'Write a tax-focused memo. Cover depreciation (straight-line and cost segregation potential), capital gains exposure if selling, depreciation recapture, and 1031 exchange tax deferral if applicable.',
+      'risk-assessment':'Focus entirely on risk. What assumptions are most fragile? What market conditions would flip the recommendation? What\'s the worst-case for each scenario? Be specific about dollar amounts at risk.',
+      'market-letter':'Write a polished, professional market analysis suitable for a real estate newsletter. Contextualize the numbers with market observations. Make it feel like expert commentary.',
+      'quick-take':'One paragraph maximum. Fastest possible read. Lead with the bottom line, include 2-3 key numbers, done.',
+    };
+    const prompt = `You are a real estate investment analyst. ${presetInstructions[aiPreset]||''} Tone: ${aiTone}. Length: ${aiLength} (${lengthCfg?.tokens||400} tokens max). Data: ${baseData}`;
     try {
       if (aiProvider === 'claude') {
         const resp = await fetch('https://api.anthropic.com/v1/messages', {
           method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,messages:[{role:'user',content:prompt}]}),
+          body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:lengthCfg?.tokens||400,messages:[{role:'user',content:prompt}]}),
         });
         const data = await resp.json();
         setAiSummary(data.content?.[0]?.text || 'Unable to generate summary.');
@@ -140,10 +165,10 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
       {/* Expanded: sliders */}
       {slidersOpen && (
         <div style={{marginTop:16,display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:8}}>
-          <Slider label="Vacancy" min={0} max={100} step={1} value={sens.vacancyRate} displayValue={`${Math.round(sens.vacancyRate)}%`} onChange={e=>setSens({...sens,vacancyRate:e.target.value})}/>
-          <Slider label="Appreciation" min={-5} max={15} step={1} value={sens.appreciation} displayValue={`${Math.round(sens.appreciation)}%`} onChange={e=>setSens({...sens,appreciation:e.target.value})}/>
-          <Slider label="Alt. Return" min={0} max={15} step={1} value={sens.altReturn} displayValue={`${Math.round(sens.altReturn)}%`} onChange={e=>setSens({...sens,altReturn:e.target.value})}/>
-          <Slider label="Hold Period" min={1} max={30} step={1} value={sens.yearsToHold} displayValue={`${sens.yearsToHold} yrs`} suffix=" yrs" onChange={e=>setSens({...sens,yearsToHold:e.target.value})}/>
+          <Slider label="Vacancy" min={0} max={100} step={1} value={sens.vacancyRate} displayValue={`${Math.round(sens.vacancyRate)}%`} tip="Percentage of the year the property sits empty. National STR average is 25-40%." onChange={e=>setSens({...sens,vacancyRate:e.target.value})}/>
+          <Slider label="Appreciation" min={-5} max={15} step={1} value={sens.appreciation} displayValue={`${Math.round(sens.appreciation)}%`} tip="Annual property value growth. US historical average is ~3-4%. Hot markets can see 8-10%." onChange={e=>setSens({...sens,appreciation:e.target.value})}/>
+          <Slider label="Alt. Return" min={0} max={15} step={1} value={sens.altReturn} displayValue={`${Math.round(sens.altReturn)}%`} tip="What you'd earn if you sold and invested the proceeds elsewhere. S&P 500 averages ~10% historically." onChange={e=>setSens({...sens,altReturn:e.target.value})}/>
+          <Slider label="Hold Period" min={1} max={30} step={1} value={sens.yearsToHold} displayValue={`${sens.yearsToHold} yrs`} suffix=" yrs" tip="How many years into the future to project. Longer periods favor holding due to appreciation compounding." onChange={e=>setSens({...sens,yearsToHold:e.target.value})}/>
         </div>
       )}
     </div>
@@ -155,10 +180,10 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
   const renderOverview = () => (
     <>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginBottom:20}}>
-        <Card style={{padding:'16px 18px'}}><SectionLabel>Hold Total</SectionLabel><div style={{fontSize:22,fontWeight:700,color:'var(--accent)'}}>{fmtK(hold.totalWealth)}</div><p style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>{sens.yearsToHold}yr equity+cash</p></Card>
-        <Card style={{padding:'16px 18px'}}><SectionLabel>Sell &amp; Invest</SectionLabel><div style={{fontSize:22,fontWeight:700,color:'var(--blue)'}}>{fmtK(sell.totalWealthAtEnd)}</div><p style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>At {sens.altReturn}% return</p></Card>
-        {show1031&&<Card style={{padding:'16px 18px'}}><SectionLabel>1031 Exchange</SectionLabel><div style={{fontSize:22,fontWeight:700,color:'var(--purple)'}}>{fmtK(exch.totalWealth)}</div><p style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>Deferred: {fmtK(exch.taxDeferred)}</p></Card>}
-        <Card style={{padding:'16px 18px',background:'var(--bg-subtle)',border:'1px solid var(--border-accent)'}}><SectionLabel>Recommendation</SectionLabel><div style={{fontSize:18,fontWeight:700,color:rec.color}}>{rec.text}</div><p style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>+{fmtK(Math.abs(hold.totalWealth-sell.totalWealthAtEnd))}</p></Card>
+        <Card style={{padding:'16px 18px'}}><SectionLabel tip="Property equity plus cumulative net cash flow over your hold period.">Hold Total</SectionLabel><div style={{fontSize:24,fontWeight:700,color:'var(--accent)'}}>{fmtK(hold.totalWealth)}</div><p style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>{sens.yearsToHold}yr equity+cash</p></Card>
+        <Card style={{padding:'16px 18px'}}><SectionLabel tip="After-tax sale proceeds invested at your chosen alternative return rate.">Sell &amp; Invest</SectionLabel><div style={{fontSize:24,fontWeight:700,color:'var(--blue)'}}>{fmtK(sell.totalWealthAtEnd)}</div><p style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>At {sens.altReturn}% return</p></Card>
+        {show1031&&<Card style={{padding:'16px 18px'}}><SectionLabel tip="Tax-deferred exchange into replacement property. Defers capital gains and depreciation recapture.">1031 Exchange</SectionLabel><div style={{fontSize:24,fontWeight:700,color:'var(--purple)'}}>{fmtK(exch.totalWealth)}</div><p style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Deferred: {fmtK(exch.taxDeferred)}</p></Card>}
+        <Card style={{padding:'16px 18px',background:'var(--bg-subtle)',border:'1px solid var(--border-accent)'}}><SectionLabel tip="Whichever scenario produces the highest total wealth wins.">Recommendation</SectionLabel><div style={{fontSize:20,fontWeight:700,color:rec.color}}>{rec.text}</div><p style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>+{fmtK(Math.abs(hold.totalWealth-sell.totalWealthAtEnd))}</p></Card>
       </div>
 
       <Card style={{marginBottom:16}}>
@@ -366,30 +391,110 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
 
   const renderAI = () => (
     <Card>
-      <SectionLabel>AI Investment Summary</SectionLabel>
-      <div style={{display:'flex',gap:8,marginBottom:16,alignItems:'flex-end',flexWrap:'wrap'}}>
-        <div style={{minWidth:180}}><SelectField label="" name="provider" value={aiProvider} onChange={e=>setAiProvider(e.target.value)} options={[{value:'claude',label:'Claude (Anthropic)'},{value:'gemini',label:'Gemini (Free)'}]}/></div>
-        <button onClick={generateAI} disabled={aiLoading} style={{padding:'10px 20px',borderRadius:8,border:'none',background:aiLoading?'var(--text-dim)':'var(--accent)',color:'#fff',fontSize:13,fontWeight:700,cursor:aiLoading?'wait':'pointer',marginBottom:16}}>
-          {aiLoading?'Generating...':'Generate Summary'}
-        </button>
+      <SectionLabel tip="AI generates a written analysis of your investment scenarios using the current slider assumptions.">AI Investment Summary</SectionLabel>
+
+      {/* Preset cards */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:8,marginBottom:20}}>
+        {AI_PRESETS.map(p=>(
+          <div key={p.value} onClick={()=>setAiPreset(p.value)} style={{
+            padding:'12px 14px',borderRadius:8,cursor:'pointer',transition:'all 0.15s',
+            background:aiPreset===p.value?'var(--bg-subtle)':'var(--bg-primary)',
+            border:`1.5px solid ${aiPreset===p.value?'var(--accent)':'var(--border-primary)'}`,
+          }}>
+            <div style={{fontSize:14,fontWeight:700,color:aiPreset===p.value?'var(--accent)':'var(--text-primary)',marginBottom:4}}>{p.label}</div>
+            <div style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.4}}>{p.desc}</div>
+          </div>
+        ))}
       </div>
+
+      {/* Controls row */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:16}}>
+        <SelectField label="Tone" name="tone" value={aiTone} onChange={e=>setAiTone(e.target.value)} options={AI_TONES}/>
+        <SelectField label="Length" name="length" value={aiLength} onChange={e=>setAiLength(e.target.value)} options={AI_LENGTHS}/>
+        <SelectField label="AI Model" name="provider" value={aiProvider} onChange={e=>setAiProvider(e.target.value)} options={[{value:'claude',label:'Claude (Anthropic)'},{value:'gemini',label:'Gemini (Free)'}]}/>
+      </div>
+
+      <button onClick={generateAI} disabled={aiLoading} style={{
+        width:'100%',padding:'14px 24px',borderRadius:8,border:'none',
+        background:aiLoading?'var(--text-dim)':'var(--accent)',color:'#fff',
+        fontSize:16,fontWeight:700,cursor:aiLoading?'wait':'pointer',marginBottom:16,
+      }}>
+        {aiLoading?'Generating...':'Generate Summary'}
+      </button>
+
       {aiSummary ? (
-        <div style={{padding:16,borderRadius:8,background:'var(--bg-primary)',border:'1px solid var(--border-accent)',fontSize:14,color:'var(--text-secondary)',lineHeight:1.8}}>{aiSummary}</div>
+        <div style={{padding:20,borderRadius:10,background:'var(--bg-primary)',border:'1px solid var(--border-accent)',fontSize:15,color:'var(--text-secondary)',lineHeight:1.8}}>
+          {aiSummary}
+          <div style={{marginTop:12,display:'flex',gap:8}}>
+            <button onClick={generateAI} style={{padding:'6px 14px',borderRadius:6,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--text-muted)',fontSize:12,cursor:'pointer'}}>Regenerate</button>
+            <button onClick={()=>navigator.clipboard?.writeText(aiSummary)} style={{padding:'6px 14px',borderRadius:6,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--text-muted)',fontSize:12,cursor:'pointer'}}>Copy</button>
+          </div>
+        </div>
       ) : (
-        <div style={{padding:20,textAlign:'center',color:'var(--text-faint)',fontSize:13}}>Click "Generate Summary" for an AI analysis of your scenarios.</div>
+        <div style={{padding:24,textAlign:'center',color:'var(--text-faint)',fontSize:14}}>
+          Pick a preset above and click "Generate Summary" for an AI analysis tailored to your audience.
+        </div>
       )}
     </Card>
+  );
+
+  // ── How It Works tab ──
+  const renderHowItWorks = () => (
+    <div>
+      <Card style={{marginBottom:16}}>
+        <SectionLabel>How STRInvestCalc Works</SectionLabel>
+        <p style={{fontSize:15,color:'var(--text-secondary)',lineHeight:1.7,marginBottom:20}}>
+          This tool models three investment scenarios for your short-term rental property and recommends the best path based on your specific numbers and assumptions.
+        </p>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:16}}>
+          {[
+            ['1','Enter Property Data','Purchase price, current value, rental income, expenses, mortgage details, and property condition (roof, HVAC, water heater ages).'],
+            ['2','Set Market Assumptions','Annual appreciation rate, vacancy rate, and what you\'d earn if you sold and invested elsewhere (S&P 500, bonds, etc).'],
+            ['3','Choose Your Strategy','Decide if you\'re interested in holding, selling outright, or exploring a 1031 exchange into a replacement property.'],
+            ['4','Review the Dashboard','Metric cards, interactive charts, and a year-by-year table show you exactly how each scenario plays out over your chosen time horizon.'],
+            ['5','Tune with Sliders','The assumptions bar at the top lets you stress-test in real time. Watch the recommendation shift as you drag vacancy, appreciation, and returns.'],
+            ['6','Go Pro (Free)','Unlock Tax Benefits, Mortgage Comparison, What-If Snapshots, and AI-powered summaries — at no cost for VHG clients.'],
+          ].map(([n,t,d],i)=>(
+            <div key={i} style={{padding:16,borderRadius:8,background:'var(--bg-primary)',border:'1px solid var(--border-primary)'}}>
+              <div style={{width:32,height:32,borderRadius:'50%',background:'var(--accent)',color:'#fff',fontSize:15,fontWeight:700,display:'inline-flex',alignItems:'center',justifyContent:'center',marginBottom:10}}>{n}</div>
+              <h3 style={{fontSize:15,fontWeight:700,color:'var(--text-primary)',marginBottom:6}}>{t}</h3>
+              <p style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.6}}>{d}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card style={{marginBottom:16}}>
+        <SectionLabel>Key Metrics Explained</SectionLabel>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:12}}>
+          {[
+            ['Hold Total Wealth','Property equity + cumulative net cash flow over the hold period. This is what you\'d be worth if you kept renting.'],
+            ['Sell & Invest Value','After-tax sale proceeds invested at your chosen alternative return rate. Accounts for realtor fees, closing costs, capital gains, and depreciation recapture.'],
+            ['1031 Exchange','Tax-deferred swap into a replacement property. Defers capital gains and depreciation recapture, letting your full equity compound in the new property.'],
+            ['Recommendation','Whichever scenario produces the highest total wealth at the end of your hold period wins. The advantage shows the dollar difference.'],
+            ['Sensitivity Sliders','Vacancy, appreciation, alternative returns, and hold period. All charts recalculate instantly when you adjust.'],
+            ['Radar Chart','Compares scenarios across 5 dimensions: total wealth, cash flow, tax efficiency, liquidity, and appreciation exposure.'],
+          ].map(([term,def],i)=>(
+            <div key={i} style={{padding:12,borderRadius:8,border:'1px solid var(--border-primary)'}}>
+              <div style={{fontSize:13,fontWeight:700,color:'var(--gold)',marginBottom:4,fontFamily:"'JetBrains Mono',monospace",textTransform:'uppercase',letterSpacing:'0.08em'}}>{term}</div>
+              <div style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.5}}>{def}</div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
   );
 
   // ── Tab config ──
   const tabs = [
     {id:'overview',label:'Overview'},
     {id:'analysis',label:'Analysis'},
+    {id:'how',label:'How It Works'},
     ...(isPro ? [
       {id:'tax',label:'Tax'},
       {id:'mortgage',label:'Mortgage'},
       {id:'snapshots',label:'What-If'},
-      {id:'ai',label:'AI'},
+      {id:'ai',label:'AI Summary'},
     ] : []),
   ];
 
@@ -424,6 +529,7 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
       {/* Content */}
       {activeTab==='overview'&&renderOverview()}
       {activeTab==='analysis'&&renderAnalysis()}
+      {activeTab==='how'&&renderHowItWorks()}
       {activeTab==='tax'&&isPro&&renderTax()}
       {activeTab==='mortgage'&&isPro&&renderMortgage()}
       {activeTab==='snapshots'&&isPro&&renderSnapshots()}
