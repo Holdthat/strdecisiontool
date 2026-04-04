@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "build",
+  "env": {
+    "REACT_APP_ENVIRONMENT": "production"
+  },
+  "routes": [
+    {
+      "src": "^/static/(.*)$",
+      "dest": "/static/$1",
+      "headers": {
+        "Cache-Control": "max-age=31536000, immutable"
+      }
+    },
+    {
+      "src": "^/.*",
+      "dest": "/index.html"
+    }
+  ]
+}
