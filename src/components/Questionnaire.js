@@ -103,16 +103,17 @@ export default function Questionnaire({onComplete, initialData, dark, discoveryD
           <SectionLabel>{isBuyer ? 'Purchase Costs' : 'Selling Costs'}</SectionLabel>
           <InputField label={isBuyer ? 'Closing & Acquisition Costs' : 'Total Selling Costs'} name="sellingCostsPct" value={form.sellingCostsPct} onChange={hc} type="number" suffix="%" tip={isBuyer ? 'Buyer closing costs as a % of purchase price. Typically 2-4% (title insurance, loan origination, inspections, attorney fees). These reduce your starting equity.' : 'Realtor commissions + closing costs as a % of sale price. Standard is 7-8% (6% agent + 1.5% closing). Private sales can be 1-3%.'}/>
           {!isBuyer&&<SectionLabel>Exit Strategy Interest</SectionLabel>}
-          {!isBuyer&&<SelectField label="What are you considering?" name="exitStrategy" value={form.exitStrategy} onChange={hc} options={[{value:'undecided',label:"Not sure yet — show me the data"},{value:'hold',label:'Leaning toward holding'},{value:'sell',label:'Leaning toward selling'},{value:'1031',label:'Interested in 1031 Exchange'}]}/>
-          {form.exitStrategy==='1031'&&(<>
-            <SectionLabel>1031 Exchange — Replacement Property</SectionLabel>
-            <InputField label="Replacement Property Value" name="replacementValue" value={form.replacementValue} onChange={hc} type="number" prefix="$"/>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <InputField label="Expected Annual Rent" name="replacementRent" value={form.replacementRent} onChange={hc} type="number" prefix="$"/>
-              <InputField label="Expected Annual Expenses" name="replacementExpenses" value={form.replacementExpenses} onChange={hc} type="number" prefix="$"/>
-            </div>
-          </>)}
-          }
+          {!isBuyer&&<>
+            <SelectField label="What are you considering?" name="exitStrategy" value={form.exitStrategy} onChange={hc} options={[{value:'undecided',label:"Not sure yet — show me the data"},{value:'hold',label:'Leaning toward holding'},{value:'sell',label:'Leaning toward selling'},{value:'1031',label:'Interested in 1031 Exchange'}]}/>
+            {form.exitStrategy==='1031'&&(<>
+              <SectionLabel>1031 Exchange — Replacement Property</SectionLabel>
+              <InputField label="Replacement Property Value" name="replacementValue" value={form.replacementValue} onChange={hc} type="number" prefix="$"/>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                <InputField label="Expected Annual Rent" name="replacementRent" value={form.replacementRent} onChange={hc} type="number" prefix="$"/>
+                <InputField label="Expected Annual Expenses" name="replacementExpenses" value={form.replacementExpenses} onChange={hc} type="number" prefix="$"/>
+              </div>
+            </>)}
+          </>}
         </>)}
 
         {step===4&&(<>
