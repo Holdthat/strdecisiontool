@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   BarChart, Bar, AreaChart, Area, RadarChart, Radar, PolarGrid,
   PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -14,6 +14,87 @@ export default function Dashboard({formData, rawFormData, sellResult, exchangeRe
   const isBuyer = discoveryData?.situation_value === 'evaluating-purchase';
   const HOLD_LABEL = isBuyer ? 'Buy & Hold' : 'Hold';
   const SELL_LABEL = isBuyer ? "Don't Buy, Invest" : 'Sell & Invest';
+
+  // Saved Properties (localStorage)
+  const [savedProperties, setSavedProperties] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('vhg-saved-properties')||'[]'); } catch(_e) { return []; }
+  });
+  const saveCurrentProperty = () => {
+    const entry = {
+      id: Date.now(),
+      name: `${formData.propertyType} - ${formData.location}`,
+      location: formData.location,
+      formData: rawFormData || formData,
+      discoveryData,
+      holdWealth: hold.totalWealth,
+      sellWealth: sell.totalWealthAtEnd,
+      recommendation: rec.text,
+      savedAt: new Date().toLocaleDateString(),
+    };
+    const updated = [...savedProperties.slice(-2), entry]; // Keep max 3
+    setSavedProperties(updated);
+    try { localStorage.setItem('vhg-saved-properties', JSON.stringify(updated)); } catch(_e) {}
+  };
+  const deleteProperty = (id) => {
+    const updated = savedProperties.filter(p => p.id !== id);
+    setSavedProperties(updated);
+    try { localStorage.setItem('vhg-saved-properties', JSON.stringify(updated)); } catch(_e) {}
+  };
+
+  // Onboarding tour
+  const [showTour, setShowTour] = useState(() => {
+    try { return !localStorage.getItem('vhg-tour-done'); } catch(_e) { return true; }
+  });
+  const [tourStep, setTourStep] = useState(0);
+  const dismissTour = () => {
+    setShowTour(false);
+    try { localStorage.setItem('vhg-tour-done', '1'); } catch(_e) {}
+  };
+
+  // Email full results
+  const emailResults = async () => {
+    const email = proUserEmail;
+    if (!email) { alert('Unlock Pro to email results.'); return; }
+    const yr1 = hold.yearlyData[0];
+    const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;background:#F8FAFC;border-radius:12px;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="font-size:24px;color:#167A5E;margin:0;">Property<span style="color:#9A7820;">Path</span></h1>
+        <p style="color:#94A3B8;font-size:13px;">by Vacation Home Group</p>
+      </div>
+      <h2 style="font-size:18px;color:#1E293B;border-bottom:2px solid #E2E8F0;padding-bottom:6px;">Investment Analysis: ${formData.location}</h2>
+      <table style="width:100%;font-size:14px;color:#1E293B;border-collapse:collapse;">
+        <tr><td style="padding:8px 0;color:#94A3B8;">Property</td><td style="padding:8px 0;font-weight:700;">${formData.propertyType} in ${formData.location}</td></tr>
+        <tr><td style="padding:8px 0;color:#94A3B8;">${isBuyer?'Asking Price':'Current Value'}</td><td style="padding:8px 0;">${fmt(isBuyer?formData.purchasePrice:formData.currentValue)}</td></tr>
+        <tr><td style="padding:8px 0;color:#94A3B8;">Annual Rent</td><td style="padding:8px 0;">${fmt(formData.annualRent)}</td></tr>
+      </table>
+      <div style="margin:20px 0;padding:16px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;">
+        <table style="width:100%;font-size:15px;color:#1E293B;">
+          <tr><td style="padding:6px 0;color:#167A5E;font-weight:700;">${HOLD_LABEL} Total</td><td style="padding:6px 0;font-weight:700;text-align:right;">${fmtK(hold.totalWealth)}</td></tr>
+          <tr><td style="padding:6px 0;color:#3B82F6;font-weight:700;">${SELL_LABEL}</td><td style="padding:6px 0;font-weight:700;text-align:right;">${fmtK(sell.totalWealthAtEnd)}</td></tr>
+          ${show1031?`<tr><td style="padding:6px 0;color:#8B5CF6;font-weight:700;">1031 Exchange</td><td style="padding:6px 0;font-weight:700;text-align:right;">${fmtK(exch.totalWealth)}</td></tr>`:''}
+          <tr style="border-top:2px solid #E2E8F0;"><td style="padding:8px 0;font-weight:700;">Recommendation</td><td style="padding:8px 0;font-weight:700;text-align:right;color:${rec.text.includes('Hold')||rec.text.includes('Buy')?'#167A5E':'#3B82F6'};">${rec.text}</td></tr>
+        </table>
+      </div>
+      <table style="width:100%;font-size:13px;color:#64748B;border-collapse:collapse;">
+        <tr><td style="padding:4px 0;">Cap Rate</td><td style="padding:4px 0;text-align:right;">${calcCapRate.toFixed(1)}%</td></tr>
+        <tr><td style="padding:4px 0;">Year 1 Cash Flow</td><td style="padding:4px 0;text-align:right;color:${(yr1?.netCashFlow||0)>=0?'#167A5E':'#EF4444'};">${fmtK(yr1?.netCashFlow||0)}</td></tr>
+        <tr><td style="padding:4px 0;">Vacancy</td><td style="padding:4px 0;text-align:right;">${sens.vacancyRate}%</td></tr>
+        <tr><td style="padding:4px 0;">Appreciation</td><td style="padding:4px 0;text-align:right;">${sens.appreciation}%</td></tr>
+        <tr><td style="padding:4px 0;">Hold Period</td><td style="padding:4px 0;text-align:right;">${sens.yearsToHold} years</td></tr>
+      </table>
+      ${hold.maintEvents?.length>0?`<p style="font-size:13px;color:#EF4444;margin-top:12px;">Capital expenses projected: ${hold.maintEvents.map(e=>e.component+' Year '+e.year+' ('+fmtK(e.cost)+')').join(', ')}</p>`:''}
+      <p style="font-size:12px;color:#94A3B8;margin-top:20px;text-align:center;">Open PropertyPath for interactive charts, sensitivity sliders, and AI analysis.</p>
+      <hr style="border:none;border-top:1px solid #E2E8F0;margin:20px 0;"/>
+      <p style="font-size:11px;color:#94A3B8;text-align:center;line-height:1.6;">This analysis does not constitute financial or investment advice. Consult a qualified professional.<br/>Vacation Home Group &middot; Real Broker NH &middot; vacationhomegroup.net</p>
+    </div>`;
+    try {
+      const resp = await fetch('/api/send-code', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({email,name:'PropertyPath Results',skipCode:true,customSubject:`PropertyPath Analysis: ${formData.location}`,customHtml:html}),
+      });
+      alert(resp.ok?'Results emailed!':'Failed to send.');
+    } catch(_e) { alert('Failed to send.'); }
+  };
 
   // Simple markdown to HTML renderer
   const renderMarkdown = (text) => {
@@ -445,11 +526,14 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
           </RadarChart>
         </ResponsiveContainer>
       </Card>
+
+      {/* Action buttons */}
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:16}}>
+        {proUserEmail&&<button onClick={emailResults} style={{padding:'10px 20px',borderRadius:8,border:'none',background:'var(--accent)',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer'}}>Email My Results</button>}
+        <button onClick={saveCurrentProperty} style={{padding:'10px 20px',borderRadius:8,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--text-primary)',fontSize:14,cursor:'pointer'}}>Save Property ({savedProperties.length}/3)</button>
+      </div>
     </>
   );
-
-  // ═══════════════════════════════════════════════════════════
-  // TAB: ANALYSIS — charts + table (merged)
   // ═══════════════════════════════════════════════════════════
   const renderAnalysis = () => (
     <>
@@ -1003,6 +1087,88 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
     );
   };
 
+  // ── Saved Properties comparison tab ──
+  const PROP_COLORS = [colors.accent, colors.blue, colors.gold];
+  const renderSavedProperties = () => {
+    const propResults = savedProperties.map(p => {
+      const fd = {...p.formData, vacancyRate:parseFloat(p.formData.vacancyRate)||10, mortgageRate:(parseFloat(p.formData.mortgageRate)||0)/100, annualAppreciation:(parseFloat(p.formData.annualAppreciation)||3)/100, alternativeReturn:(parseFloat(p.formData.alternativeReturn)||7)/100, taxBracket:(parseFloat(p.formData.taxBracket)||32)/100, sellingCostsPct:parseFloat(p.formData.sellingCostsPct)||7.5};
+      const h = calculateHoldScenario(fd, 10);
+      const s = calculateSellScenario(fd, 10, fd.alternativeReturn);
+      return {...p, hold:h, sell:s};
+    });
+
+    return (<>
+      <Card style={{marginBottom:16}}>
+        <SectionLabel tip="Save up to 3 properties and compare them side by side.">Saved Properties</SectionLabel>
+        {savedProperties.length===0&&<p style={{fontSize:14,color:'var(--text-faint)',textAlign:'center',padding:20}}>No saved properties yet. Run an analysis and click "Save Property" on the Overview tab.</p>}
+        {propResults.map((p,i)=>(
+          <div key={p.id} style={{display:'flex',alignItems:'center',gap:12,padding:14,borderRadius:8,border:`1.5px solid ${PROP_COLORS[i]||'var(--border-primary)'}`,marginBottom:8,flexWrap:'wrap'}}>
+            <div style={{width:10,height:10,borderRadius:'50%',background:PROP_COLORS[i],flexShrink:0}}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:14,fontWeight:700,color:'var(--text-primary)'}}>{p.location||p.name}</div>
+              <div style={{fontSize:11,color:'var(--text-muted)'}}>Saved {p.savedAt}</div>
+            </div>
+            <div style={{display:'flex',gap:12,alignItems:'center',flexShrink:0}}>
+              <div style={{textAlign:'right'}}><div style={{fontSize:14,fontWeight:700,color:'var(--accent)'}}>{fmtK(p.holdWealth)}</div><div style={{fontSize:9,color:'var(--text-faint)'}}>{HOLD_LABEL}</div></div>
+              <div style={{textAlign:'right'}}><div style={{fontSize:14,fontWeight:700,color:'var(--blue)'}}>{fmtK(p.sellWealth)}</div><div style={{fontSize:9,color:'var(--text-faint)'}}>{SELL_LABEL}</div></div>
+              <button onClick={()=>deleteProperty(p.id)} style={{padding:'4px 8px',borderRadius:6,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--red)',fontSize:11,cursor:'pointer'}}>x</button>
+            </div>
+          </div>
+        ))}
+      </Card>
+
+      {propResults.length>=2&&(<>
+        <Card style={{marginBottom:16}}>
+          <SectionLabel>Property Comparison</SectionLabel>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={propResults.map(p=>({name:p.location||p.name,[HOLD_LABEL]:p.hold.totalWealth,[SELL_LABEL]:p.sell.totalWealthAtEnd}))} margin={{top:10,right:10,left:0,bottom:0}}>
+              <CartesianGrid strokeDasharray="3 3" stroke={colors.grid}/>
+              <XAxis dataKey="name" stroke={colors.muted} fontSize={11}/>
+              <YAxis stroke={colors.muted} fontSize={10} tickFormatter={fmtK}/>
+              <Tooltip content={<ChartTooltip/>}/>
+              <Legend wrapperStyle={{fontSize:12}}/>
+              <Bar dataKey={HOLD_LABEL} fill={colors.accent} radius={[4,4,0,0]}/>
+              <Bar dataKey={SELL_LABEL} fill={colors.blue} radius={[4,4,0,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card>
+          <SectionLabel>Side-by-Side</SectionLabel>
+          <div style={{overflowX:'auto'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:400}}>
+              <thead><tr style={{borderBottom:'2px solid var(--border-primary)'}}>
+                <th style={{textAlign:'left',padding:'10px 8px',color:'var(--gold)',fontSize:11,textTransform:'uppercase',fontFamily:"'JetBrains Mono',monospace"}}>Metric</th>
+                {propResults.map((p,i)=><th key={i} style={{textAlign:'right',padding:'10px 8px',color:PROP_COLORS[i],fontWeight:700,fontSize:12}}>{p.location||p.name}</th>)}
+              </tr></thead>
+              <tbody>
+                {[
+                  [HOLD_LABEL+' Total',p=>fmtK(p.hold.totalWealth)],
+                  [SELL_LABEL,p=>fmtK(p.sell.totalWealthAtEnd)],
+                  ['Year 1 Cash Flow',p=><span style={{color:(p.hold.yearlyData[0]?.netCashFlow||0)>=0?'var(--accent)':'var(--red)'}}>{fmtK(p.hold.yearlyData[0]?.netCashFlow||0)}</span>],
+                  ['Recommendation',p=><span style={{fontWeight:700,color:p.hold.totalWealth>=p.sell.totalWealthAtEnd?'var(--accent)':'var(--blue)'}}>{p.hold.totalWealth>=p.sell.totalWealthAtEnd?HOLD_LABEL:SELL_LABEL}</span>],
+                ].map(([label,fn],ri)=>(
+                  <tr key={ri} style={{borderBottom:'1px solid var(--border-primary)'}}>
+                    <td style={{padding:'8px',color:'var(--text-muted)',fontSize:12}}>{label}</td>
+                    {propResults.map((p,ci)=><td key={ci} style={{textAlign:'right',padding:'8px',fontWeight:600}}>{fn(p)}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </>)}
+    </>);
+  };
+
+  // Onboarding tour steps
+  const TOUR_STEPS = [
+    {target:'overview',title:'Welcome to PropertyPath!',desc:'This is your investment dashboard. The Overview tab shows your key metrics and recommendation.'},
+    {target:'sliders',title:'Tune Your Assumptions',desc:'Drag these sliders to stress-test vacancy, appreciation, returns, and hold period. All charts update instantly.'},
+    {target:'tabs',title:'Explore Tabs',desc:'Analysis shows detailed charts. Pro users get Tax Benefits, Mortgage Comparison, What-If Snapshots, and AI Summary.'},
+    {target:'actions',title:'Save & Share',desc:'Save properties for comparison, generate PDF reports, email results, or share a link.'},
+  ];
+
   // Admin mode — accessed via ?admin=true in URL (for site owner only)
   const isAdmin = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('admin') === 'true';
 
@@ -1010,6 +1176,7 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
   const tabs = [
     {id:'overview',label:'Overview'},
     {id:'analysis',label:'Analysis'},
+    ...(savedProperties.length>0 ? [{id:'properties',label:`Properties (${savedProperties.length})`}] : []),
     ...(isPro ? [
       {id:'tax',label:'Tax'},
       {id:'mortgage',label:'Mortgage'},
@@ -1071,12 +1238,63 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
       {/* Content */}
       {activeTab==='overview'&&renderOverview()}
       {activeTab==='analysis'&&renderAnalysis()}
+      {activeTab==='properties'&&renderSavedProperties()}
       {activeTab==='how'&&renderHowItWorks()}
       {activeTab==='tax'&&isPro&&renderTax()}
       {activeTab==='mortgage'&&isPro&&renderMortgage()}
       {activeTab==='snapshots'&&isPro&&renderSnapshots()}
       {activeTab==='ai'&&isPro&&renderAI()}
       {activeTab==='settings'&&isAdmin&&renderSettings()}
+
+      {/* Spacer for mobile bottom nav */}
+      <div style={{height:64}}/>
+
+      {/* Onboarding Tour */}
+      {showTour&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={dismissTour}>
+          <div onClick={e=>e.stopPropagation()} style={{background:'var(--bg-card)',border:'1px solid var(--border-primary)',borderRadius:12,padding:'28px 32px',maxWidth:400,width:'100%',boxShadow:'0 20px 60px rgba(0,0,0,0.3)'}}>
+            <div style={{display:'flex',gap:6,marginBottom:16}}>
+              {TOUR_STEPS.map((_,i)=><div key={i} style={{flex:1,height:3,borderRadius:2,background:i<=tourStep?'var(--accent)':'var(--border-primary)'}}/>)}
+            </div>
+            <div style={{fontSize:13,color:'var(--text-faint)',fontFamily:"'JetBrains Mono',monospace",marginBottom:6}}>{tourStep+1}/{TOUR_STEPS.length}</div>
+            <h3 style={{fontSize:20,fontWeight:700,color:'var(--text-primary)',marginBottom:8}}>{TOUR_STEPS[tourStep].title}</h3>
+            <p style={{fontSize:14,color:'var(--text-muted)',lineHeight:1.6,marginBottom:20}}>{TOUR_STEPS[tourStep].desc}</p>
+            <div style={{display:'flex',justifyContent:'space-between'}}>
+              <button onClick={dismissTour} style={{padding:'8px 16px',borderRadius:6,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--text-faint)',fontSize:13,cursor:'pointer'}}>Skip Tour</button>
+              <button onClick={()=>{if(tourStep<TOUR_STEPS.length-1)setTourStep(tourStep+1);else dismissTour();}} style={{padding:'8px 20px',borderRadius:6,border:'none',background:'var(--accent)',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer'}}>
+                {tourStep===TOUR_STEPS.length-1?'Get Started':'Next'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Bottom Nav */}
+      <div style={{
+        position:'fixed',bottom:0,left:0,right:0,
+        background:'var(--bg-card)',borderTop:'1px solid var(--border-primary)',
+        display:'none',justifyContent:'space-around',padding:'6px 0 env(safe-area-inset-bottom,6px)',
+        zIndex:100,
+      }} className="mobile-bottom-nav">
+        {[
+          {id:'overview',icon:'📊',label:'Overview'},
+          {id:'analysis',icon:'📈',label:'Analysis'},
+          ...(savedProperties.length>0?[{id:'properties',icon:'🏠',label:'Properties'}]:[]),
+          ...(isPro?[{id:'ai',icon:'🤖',label:'AI'}]:[]),
+          {id:'how',icon:'❓',label:'Help'},
+        ].map(t=>(
+          <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
+            display:'flex',flexDirection:'column',alignItems:'center',gap:2,
+            background:'none',border:'none',cursor:'pointer',padding:'4px 8px',minWidth:0,
+            color:activeTab===t.id?'var(--accent)':'var(--text-faint)',
+          }}>
+            <span style={{fontSize:18}}>{t.icon}</span>
+            <span style={{fontSize:10,fontWeight:activeTab===t.id?700:500}}>{t.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <style>{`@media(max-width:640px){.mobile-bottom-nav{display:flex!important;}}`}</style>
     </div>
   );
 }
