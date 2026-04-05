@@ -34,7 +34,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { code, token, name, phone } = req.body;
+  const { code, token, name, phone, notifyEmails: notifyEmailsRaw, discoveryData } = req.body;
   if (!code || !token) return res.status(400).json({ error: 'Code and token required' });
 
   const result = verifyToken(token, code);
@@ -65,7 +65,13 @@ export default async function handler(req, res) {
   }
 
   // ── 2. Notify Joe and Dino ──
-  if (RESEND_API_KEY) {
+  // Parse notification emails from request, fallback to defaults
+  const defaultNotify = ['joemori@vacationhome.group', 'dinoamato@vacationhome.group'];
+  const notifyEmails = notifyEmailsRaw
+    ? notifyEmailsRaw.split(',').map(e => e.trim()).filter(e => e.includes('@'))
+    : defaultNotify;
+
+  if (RESEND_API_KEY && notifyEmails.length > 0) {
     const now = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
     try {
       await fetch('https://api.resend.com/emails', {
@@ -73,7 +79,7 @@ export default async function handler(req, res) {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
         body: JSON.stringify({
           from: FROM_EMAIL,
-          to: ['joemori@vacationhome.group', 'dinoamato@vacationhome.group'],
+          to: notifyEmails,
           subject: `STRInvestCalc Pro Signup: ${userName}`,
           html: `
             <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px;background:#F8FAFC;border-radius:12px;">
@@ -90,6 +96,17 @@ export default async function handler(req, res) {
                   <tr><td style="padding:6px 0;color:#94A3B8;">Time</td><td style="padding:6px 0;">${now} ET</td></tr>
                 </table>
               </div>
+              ${discoveryData ? `
+              <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;padding:20px;margin-bottom:20px;">
+                <p style="font-size:13px;font-weight:700;color:#9A7820;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.08em;">Client Profile</p>
+                <table style="width:100%;font-size:14px;color:#1E293B;">
+                  <tr><td style="padding:5px 0;color:#94A3B8;width:110px;">Situation</td><td style="padding:5px 0;">${discoveryData.situation || '-'}</td></tr>
+                  <tr><td style="padding:5px 0;color:#94A3B8;">Priority</td><td style="padding:5px 0;">${discoveryData.priority || '-'}</td></tr>
+                  <tr><td style="padding:5px 0;color:#94A3B8;">Risk Level</td><td style="padding:5px 0;">${discoveryData.risk || '-'}</td></tr>
+                  <tr><td style="padding:5px 0;color:#94A3B8;">Timeline</td><td style="padding:5px 0;">${discoveryData.timeline || '-'}</td></tr>
+                  <tr><td style="padding:5px 0;color:#94A3B8;">Experience</td><td style="padding:5px 0;">${discoveryData.experience || '-'}</td></tr>
+                </table>
+              </div>` : ''}
               <div style="text-align:center;">
                 <a href="mailto:${email}" style="display:inline-block;padding:10px 24px;background:#167A5E;color:#FFFFFF;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none;">Reply to ${userName.split(' ')[0]}</a>
               </div>

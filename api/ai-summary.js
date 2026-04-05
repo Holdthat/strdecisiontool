@@ -13,28 +13,44 @@ export default async function handler(req, res) {
 
   try {
     if (provider === 'gemini') {
-      if (!geminiKey) return res.status(400).json({ error: 'No Gemini API key. Configure in Admin settings.' });
+      if (!geminiKey) {
+        return res.status(400).json({ error: 'No Gemini API key. Go to Admin tab (?admin=true) to configure.' });
+      }
 
       const resp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': geminiKey,
+          },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: { maxOutputTokens: maxTokens || 400 },
           }),
         }
       );
+
       const data = await resp.json();
+
+      if (!resp.ok) {
+        const errMsg = data?.error?.message || JSON.stringify(data?.error) || `Google API error (${resp.status})`;
+        return res.status(resp.status).json({ error: 'Gemini error: ' + errMsg });
+      }
+
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      return res.status(200).json({ text: text || 'Gemini returned no content.' });
+      if (!text) {
+        const blockReason = data?.candidates?.[0]?.finishReason || data?.promptFeedback?.blockReason;
+        return res.status(200).json({ error: blockReason ? 'Gemini blocked: ' + blockReason : 'Gemini returned empty response.' });
+      }
+      return res.status(200).json({ text });
 
     } else {
       // Claude
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey) {
-        return res.status(500).json({ error: 'ANTHROPIC_API_KEY not set in Vercel environment variables.' });
+        return res.status(500).json({ error: 'ANTHROPIC_API_KEY not set. Add it to Vercel Environment Variables.' });
       }
 
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -51,16 +67,15 @@ export default async function handler(req, res) {
         }),
       });
 
+      const data = await resp.json();
+
       if (!resp.ok) {
-        const errData = await resp.json().catch(() => ({}));
-        return res.status(resp.status).json({
-          error: errData?.error?.message || `Anthropic API returned ${resp.status}`,
-        });
+        const errMsg = data?.error?.message || JSON.stringify(data?.error) || `Anthropic error (${resp.status})`;
+        return res.status(resp.status).json({ error: 'Claude error: ' + errMsg });
       }
 
-      const data = await resp.json();
       const text = data?.content?.[0]?.text;
-      return res.status(200).json({ text: text || 'Claude returned no content.' });
+      return res.status(200).json({ text: text || 'Claude returned empty response.' });
     }
   } catch (err) {
     return res.status(500).json({ error: 'AI proxy error: ' + (err.message || String(err)) });
