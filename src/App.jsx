@@ -16,10 +16,17 @@ import Dashboard from './components/Dashboard';
 import LandingPage from './components/LandingPage';
 
 export default function App() {
-  // Theme with localStorage persistence
+  // Theme — auto-detect system preference, then localStorage override
   const [dark, setDark] = useState(() => {
-    try { const s = localStorage.getItem('vhg-theme'); return s ? s === 'dark' : true; }
-    catch (_e) { return true; }
+    try {
+      const saved = localStorage.getItem('vhg-theme');
+      if (saved) return saved === 'dark';
+      // Auto-detect system preference
+      if (typeof window !== 'undefined' && window.matchMedia) {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+      return true;
+    } catch (_e) { return true; }
   });
   useEffect(() => {
     try { localStorage.setItem('vhg-theme', dark ? 'dark' : 'light'); } catch (_e) {}
