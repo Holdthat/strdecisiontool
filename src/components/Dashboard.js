@@ -180,6 +180,7 @@ PROPERTY DATA:
 - Hold ${sens.yearsToHold} years total wealth: ${fmtK(hold.totalWealth)}
 - Sell & invest total wealth: ${fmtK(sell.totalWealthAtEnd)}${show1031?`\n- 1031 Exchange total wealth: ${fmtK(exch.totalWealth)}`:''}
 - Recommendation: ${rec.text}, advantage: ${fmtK(Math.abs(hold.totalWealth-sell.totalWealthAtEnd))}
+${hold.maintEvents&&hold.maintEvents.length>0?`- Upcoming capital expenses: ${hold.maintEvents.map(e=>`${e.component} in Year ${e.year} (${fmtK(e.cost)})`).join(', ')}`:''}
 
 Write your complete analysis now.`;
     try {
@@ -259,6 +260,28 @@ Write your complete analysis now.`;
         <Card style={{padding:'14px 16px'}}><SectionLabel tip="Year 1 net cash flow: rental income minus expenses, maintenance, and debt service.">Cash Flow /Yr</SectionLabel><div style={{fontSize:22,fontWeight:700,color:hold.yearlyData[0]?.netCashFlow>=0?'var(--accent)':'var(--red)'}}>{fmtK(hold.yearlyData[0]?.netCashFlow||0)}</div><p style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>year 1 net</p></Card>
         <Card style={{padding:'14px 16px'}}><SectionLabel tip="Your total selling costs as a percentage of sale price. Includes agent commissions and closing costs.">Selling Costs</SectionLabel><div style={{fontSize:22,fontWeight:700,color:'var(--text-secondary)'}}>{parseFloat(formData.sellingCostsPct)||7.5}%</div><p style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{fmtK(sell.sellingCosts)}</p></Card>
       </div>
+
+      {/* Maintenance Alerts */}
+      {hold.maintEvents && hold.maintEvents.length > 0 && (
+        <Card style={{marginBottom:16,padding:'16px 20px'}}>
+          <SectionLabel tip="Major replacement costs projected based on component ages you entered. These are factored into your Hold scenario cash flow.">Upcoming Capital Expenses</SectionLabel>
+          <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+            {hold.maintEvents.map((ev,i) => (
+              <div key={i} style={{padding:'10px 16px',borderRadius:8,border:'1px solid var(--border-primary)',background:'var(--bg-primary)',minWidth:160}}>
+                <div style={{fontSize:14,fontWeight:700,color:'var(--red)'}}>{fmtK(ev.cost)}</div>
+                <div style={{fontSize:13,fontWeight:600,color:'var(--text-primary)',marginTop:2}}>{ev.component}</div>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>
+                  {ev.year === 1 && ev.age >= 25 ? 'Overdue now' : ev.year === 1 ? 'Due now' : `Year ${ev.year}`}
+                  {' '}&middot; Age {ev.age}yr
+                </div>
+              </div>
+            ))}
+          </div>
+          <p style={{fontSize:12,color:'var(--text-faint)',marginTop:10}}>
+            Total projected: {fmtK(hold.maintEvents.reduce((s,e)=>s+e.cost,0))} over {sens.yearsToHold} years. These costs are included in the Hold scenario cash flow calculations.
+          </p>
+        </Card>
+      )}
 
       <Card style={{marginBottom:16}}>
         <SectionLabel>Cumulative Wealth</SectionLabel>
