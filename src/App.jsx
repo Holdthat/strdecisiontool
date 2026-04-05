@@ -161,6 +161,7 @@ export default function App() {
           sellResult={sellResult}
           exchangeResult={exchangeResult}
           onEditAssumptions={() => setView('questionnaire')}
+          onLoadProperty={(savedFormData) => handleAnalyze(savedFormData)}
           dark={dark}
           isPro={isPro}
           onProClick={() => setShowProGate(true)}
