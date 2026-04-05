@@ -8,7 +8,7 @@ import { Card, SectionLabel, Slider, TabBar, ChartTooltip, InputField, SelectFie
 import { calculateHoldScenario, calculateSellScenario, calculate1031Scenario, calculateTaxBenefits, calculateMortgageScenario, fmt, fmtK } from '../utils/calculations';
 import { chartColors } from '../utils/theme';
 
-export default function Dashboard({formData, sellResult, exchangeResult, onEditAssumptions, dark, isPro, onProClick}) {
+export default function Dashboard({formData, sellResult, exchangeResult, onEditAssumptions, dark, isPro, onProClick, discoveryData}) {
   const show1031 = !!exchangeResult;
   const colors = chartColors(dark);
 
@@ -51,6 +51,7 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
 
   // API Key Settings
   const [geminiKey, setGeminiKey] = useState(() => {try{return localStorage.getItem('vhg-gemini-key')||'';}catch(_e){return '';}});
+  const [notifyEmails, setNotifyEmails] = useState(() => {try{return localStorage.getItem('vhg-notify-emails')||'joemori@vacationhome.group,dinoamato@vacationhome.group';}catch(_e){return 'joemori@vacationhome.group,dinoamato@vacationhome.group';}});
   const [settingsSaved, setSettingsSaved] = useState(false);
 
   const AI_PRESETS = [
@@ -141,7 +142,9 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
       'market-letter':'Write a polished, professional market analysis suitable for a real estate newsletter. Contextualize the numbers with market observations. Make it feel like expert commentary.',
       'quick-take':'One paragraph maximum. Fastest possible read. Lead with the bottom line, include 2-3 key numbers, done.',
     };
-    const prompt = `You are a real estate investment analyst. ${presetInstructions[aiPreset]||''} Tone: ${aiTone}. Length: ${aiLength} (${lengthCfg?.tokens||400} tokens max). Data: ${baseData}`;
+    // Build discovery context for AI
+    const discoveryContext = discoveryData ? ` Client profile: ${discoveryData.situation}. Priority: ${discoveryData.priority}. Risk tolerance: ${discoveryData.risk}. Timeline: ${discoveryData.timeline}. Experience: ${discoveryData.experience}.` : '';
+    const prompt = `You are a real estate investment analyst.${discoveryContext} ${presetInstructions[aiPreset]||''} Tone: ${aiTone}. Length: ${aiLength} (${lengthCfg?.tokens||400} tokens max). Data: ${baseData}`;
     try {
       const key = geminiKey || (()=>{try{return localStorage.getItem('vhg-gemini-key')||'';}catch(_e){return '';}})();
       const resp = await fetch('/api/ai-summary', {
@@ -723,28 +726,49 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
   );
   const renderSettings = () => {
     const saveSettings = () => {
-      try{localStorage.setItem('vhg-gemini-key',geminiKey);}catch(_e){}
+      try{
+        localStorage.setItem('vhg-gemini-key',geminiKey);
+        localStorage.setItem('vhg-notify-emails',notifyEmails);
+      }catch(_e){}
       setSettingsSaved(true);
       setTimeout(()=>setSettingsSaved(false),2000);
     };
+    const emailList = notifyEmails.split(',').map(e=>e.trim()).filter(Boolean);
     return (
       <Card>
         <SectionLabel>Admin Settings</SectionLabel>
         <div style={{padding:'10px 14px',borderRadius:8,background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',marginBottom:20,fontSize:13,color:'var(--text-muted)'}}>
           This panel is only visible to administrators via <code style={{color:'var(--accent)'}}>?admin=true</code> URL parameter. End users will never see this tab.
         </div>
-        <p style={{fontSize:14,color:'var(--text-muted)',marginBottom:20,lineHeight:1.6}}>
-          Configure API keys for AI features. Keys are stored in the browser's localStorage on this device only.
-        </p>
 
+        {/* Notification Emails */}
+        <div style={{padding:16,borderRadius:8,background:'var(--bg-primary)',border:'1px solid var(--border-primary)',marginBottom:16}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+            <div style={{width:8,height:8,borderRadius:'50%',background:emailList.length>0?'var(--green)':'var(--text-dim)'}}/>
+            <span style={{fontSize:14,fontWeight:700,color:'var(--text-primary)'}}>Pro Signup Notifications</span>
+          </div>
+          <p style={{fontSize:13,color:'var(--text-muted)',marginBottom:12}}>When someone unlocks Pro, notification emails are sent to these addresses. Separate multiple emails with commas.</p>
+          <InputField label="Notification Emails" name="notifyEmails" value={notifyEmails} onChange={e=>setNotifyEmails(e.target.value)} placeholder="joe@example.com, dino@example.com" tip="Comma-separated list. Each recipient gets an email with the new user's name, email, phone, and a reply button."/>
+          <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:4}}>
+            {emailList.map((em,i)=>(
+              <span key={i} style={{display:'inline-flex',alignItems:'center',gap:4,padding:'4px 10px',borderRadius:20,background:'var(--bg-subtle)',border:'1px solid var(--border-primary)',fontSize:12,color:'var(--text-secondary)'}}>
+                {em}
+                <span onClick={()=>setNotifyEmails(emailList.filter((_,j)=>j!==i).join(', '))} style={{cursor:'pointer',color:'var(--red)',fontWeight:700,fontSize:14}}>x</span>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Claude */}
         <div style={{padding:16,borderRadius:8,background:'var(--bg-primary)',border:'1px solid var(--border-primary)',marginBottom:16}}>
           <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
             <div style={{width:8,height:8,borderRadius:'50%',background:'var(--green)'}}/>
             <span style={{fontSize:14,fontWeight:700,color:'var(--text-primary)'}}>Claude (Anthropic)</span>
           </div>
-          <p style={{fontSize:13,color:'var(--text-muted)'}}>Built-in. No API key needed. Powered by Claude Sonnet.</p>
+          <p style={{fontSize:13,color:'var(--text-muted)'}}>Server-side via ANTHROPIC_API_KEY env var. No browser config needed.</p>
         </div>
 
+        {/* Gemini */}
         <div style={{padding:16,borderRadius:8,background:'var(--bg-primary)',border:'1px solid var(--border-primary)',marginBottom:16}}>
           <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
             <div style={{width:8,height:8,borderRadius:'50%',background:geminiKey?'var(--green)':'var(--text-dim)'}}/>
@@ -762,7 +786,7 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
         <div style={{marginTop:24,padding:14,borderRadius:8,border:'1px solid var(--border-primary)'}}>
           <div style={{fontSize:12,fontWeight:700,color:'var(--gold)',marginBottom:8,fontFamily:"'JetBrains Mono',monospace",textTransform:'uppercase',letterSpacing:'0.1em'}}>Privacy</div>
           <p style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.6}}>
-            API keys are stored in your browser's localStorage only. They are sent directly to the respective AI provider when you generate a summary and are never transmitted to Vacation Home Group servers. All investment calculations run entirely in your browser.
+            All settings are stored in your browser's localStorage on this device only. Notification emails are passed to the verification endpoint at signup time. API keys are sent to their respective providers server-side.
           </p>
         </div>
       </Card>
@@ -781,8 +805,8 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
       {id:'mortgage',label:'Mortgage'},
       {id:'snapshots',label:'What-If'},
       {id:'ai',label:'AI Summary'},
-      ...(isAdmin ? [{id:'settings',label:'Admin'}] : []),
     ] : []),
+    ...(isAdmin ? [{id:'settings',label:'Admin'}] : []),
     {id:'how',label:'How It Works'},
   ];
 
@@ -825,7 +849,7 @@ export default function Dashboard({formData, sellResult, exchangeResult, onEditA
       {activeTab==='mortgage'&&isPro&&renderMortgage()}
       {activeTab==='snapshots'&&isPro&&renderSnapshots()}
       {activeTab==='ai'&&isPro&&renderAI()}
-      {activeTab==='settings'&&isPro&&isAdmin&&renderSettings()}
+      {activeTab==='settings'&&isAdmin&&renderSettings()}
     </div>
   );
 }

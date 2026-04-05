@@ -269,7 +269,7 @@ export const AppHeader = ({dark}) => (
 // ═══════════════════════════════════════════════════════════
 // PRO GATE
 // ═══════════════════════════════════════════════════════════
-export const ProGate = ({onUnlock,onClose}) => {
+export const ProGate = ({onUnlock,onClose,discoveryData}) => {
   const [step,setStep] = useState('info');
   const [name,setName] = useState('');
   const [email,setEmail] = useState('');
@@ -300,7 +300,7 @@ export const ProGate = ({onUnlock,onClose}) => {
     try {
       const resp = await fetch('/api/verify-code', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({code,token,name,phone}),
+        body:JSON.stringify({code,token,name,phone,discoveryData:discoveryData||null,notifyEmails:(()=>{try{return localStorage.getItem('vhg-notify-emails')||'';}catch(_e){return '';}})()}),
       });
       const data = await resp.json();
       if(resp.ok && data.success) { 

@@ -1,14 +1,14 @@
 import React from 'react';
 import { Card, SectionLabel, GoldDivider } from './UI';
 
-export default function LandingPage({onOpenCalc, onProClick, isPro, featRef, proRef, docsRef}) {
+export default function LandingPage({onOpenCalc, onStartDiscovery, onProClick, isPro, featRef, proRef, docsRef}) {
   const features = [
-    {icon:'📊',title:'Hold vs. Sell vs. 1031',desc:'Three-scenario modeling with 10-year projections. Cumulative wealth, cash flow, and equity side by side.'},
-    {icon:'🏦',title:'Full Financial Engine',desc:'Mortgage P&I, depreciation, capital gains, depreciation recapture, vacancy, and maintenance reserves.'},
-    {icon:'⚙️',title:'Sensitivity Sliders',desc:'Drag to stress-test. Vacancy, appreciation, returns, and time horizon update charts in real time.'},
-    {icon:'🎯',title:'Smart Recommendation',desc:'Data-driven hold/sell/1031 recommendation that shifts dynamically with your assumptions.'},
-    {icon:'📈',title:'6 Interactive Charts',desc:'Area, bar, pie, radar, stacked equity, and composed cash flow charts — all responsive.'},
-    {icon:'⚡',title:'No Account Required',desc:'Standard features work instantly. No login, no signup. Everything runs in your browser.'},
+    {icon:'📊',title:'Personalized Analysis',desc:'Tell us your goals and risk tolerance. We tailor the analysis to what matters most to you.'},
+    {icon:'🏦',title:'Hold vs. Sell vs. 1031',desc:'Three-scenario modeling with 10-year projections. Cash flow, equity, and wealth side by side.'},
+    {icon:'⚙️',title:'Stress-Test Your Assumptions',desc:'Drag sliders to see how vacancy, appreciation, returns, and time horizon change the outcome.'},
+    {icon:'🎯',title:'Smart Recommendation',desc:'Data-driven hold/sell/1031 recommendation that shifts dynamically with your numbers.'},
+    {icon:'📈',title:'Charts and Visual Analysis',desc:'Area, bar, pie, radar, and composed charts. Side-by-side What-If comparison.'},
+    {icon:'⚡',title:'No Account Required',desc:'Standard features work instantly. Everything runs in your browser. Pro is free for VHG clients.'},
   ];
 
   const proFeatures = [
@@ -21,25 +21,25 @@ export default function LandingPage({onOpenCalc, onProClick, isPro, featRef, pro
     ['PRO FEATURES','',null,null],
     ['Tax Benefits Calculator (SL + Cost Seg)',null,false,true],
     ['Mortgage Scenario Comparison',null,false,true],
-    ['What-If Snapshots',null,false,true],
+    ['What-If Snapshots with Side-by-Side',null,false,true],
     ['AI Investment Summary (Claude + Gemini)',null,false,true],
-    ['Save & Compare Properties',null,false,true],
     ['Priority Support',null,false,true],
   ];
 
   return (
     <div>
-      {/* HERO */}
+      {/* HERO — Advisor-first messaging */}
       <div style={{textAlign:'center',padding:'60px 20px 48px',maxWidth:720,margin:'0 auto'}}>
-        <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--gold)',marginBottom:16}}>Vacation Home Group · STR Investment Tool</div>
-        <h1 style={{fontSize:'clamp(28px,5vw,42px)',fontWeight:800,lineHeight:1.15,color:'var(--text-primary)',marginBottom:20,fontFamily:"'Playfair Display',Georgia,serif"}}>Should you hold, sell, or 1031 exchange your vacation rental?</h1>
-        <p style={{fontSize:16,color:'var(--text-muted)',lineHeight:1.7,maxWidth:560,margin:'0 auto 28px'}}>Model cash flow, equity, and returns across three scenarios. Real numbers before you make a decision.</p>
+        <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--gold)',marginBottom:16}}>Vacation Home Group · Your Real Estate Advisor</div>
+        <h1 style={{fontSize:'clamp(28px,5vw,42px)',fontWeight:800,lineHeight:1.15,color:'var(--text-primary)',marginBottom:20,fontFamily:"'Playfair Display',Georgia,serif"}}>Not sure what to do with your property?</h1>
+        <p style={{fontSize:17,color:'var(--text-muted)',lineHeight:1.7,maxWidth:580,margin:'0 auto 12px'}}>Whether you're thinking about holding, selling, refinancing, or exchanging — we'll help you model every option and find the smartest path forward.</p>
+        <p style={{fontSize:15,color:'var(--text-faint)',lineHeight:1.6,maxWidth:520,margin:'0 auto 28px'}}>It starts with a few quick questions about your goals. No account needed.</p>
         <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
-          <button onClick={onOpenCalc} style={{padding:'14px 28px',borderRadius:8,border:'none',background:'var(--accent)',color:'#fff',fontSize:15,fontWeight:700,cursor:'pointer'}}>Open Calculator →</button>
-          <button onClick={()=>featRef.current?.scrollIntoView({behavior:'smooth'})} style={{padding:'14px 28px',borderRadius:8,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--text-muted)',fontSize:15,cursor:'pointer'}}>See Features</button>
+          <button onClick={onStartDiscovery||onOpenCalc} style={{padding:'16px 32px',borderRadius:8,border:'none',background:'var(--accent)',color:'#fff',fontSize:16,fontWeight:700,cursor:'pointer'}}>Let's Figure It Out →</button>
+          <button onClick={()=>featRef.current?.scrollIntoView({behavior:'smooth'})} style={{padding:'16px 28px',borderRadius:8,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--text-muted)',fontSize:15,cursor:'pointer'}}>How It Works</button>
         </div>
         <div style={{display:'flex',justifyContent:'center',gap:32,marginTop:40,flexWrap:'wrap'}}>
-          {[['3','Scenarios'],['10+','Charts'],['30yr','Projections'],['∞','Properties']].map(([v,l],i)=>(
+          {[['5','Quick Questions'],['3','Scenarios'],['10+','Charts'],['AI','Powered']].map(([v,l],i)=>(
             <div key={i} style={{textAlign:'center'}}><div style={{fontSize:24,fontWeight:800,color:'var(--accent)'}}>{v}</div><div style={{fontSize:11,color:'var(--text-faint)',textTransform:'uppercase',letterSpacing:'0.05em'}}>{l}</div></div>
           ))}
         </div>
