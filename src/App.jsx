@@ -1,16 +1,16 @@
 /**
  * STRInvestCalc — Investment Decision Tool
- * Vacation Home Group · v3.0.0
+ * Vacation Home Group · v3.3.0
  * 
- * Features: Landing page, 4-step questionnaire, Hold/Sell/1031 dashboard,
- * mobile-responsive tabs, sensitivity sliders, Pro tier (tax benefits,
- * mortgage comparison, what-if snapshots, AI summary), dark/light theme.
+ * Flow: Landing → Goal Discovery (5 questions) → Questionnaire → Dashboard
+ * Discovery data feeds into AI prompts, Pro signup notifications, and CRM.
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { darkVars, lightVars } from './utils/theme';
 import { calculateHoldScenario, calculateSellScenario, calculate1031Scenario } from './utils/calculations';
 import { NavBar, VHGFooter, ProGate } from './components/UI';
+import GoalDiscovery from './components/GoalDiscovery';
 import Questionnaire from './components/Questionnaire';
 import Dashboard from './components/Dashboard';
 import LandingPage from './components/LandingPage';
@@ -27,8 +27,9 @@ export default function App() {
 
   // App state
   const [view, setView] = useState('landing');
-  const [rawFormData, setRawFormData] = useState(null); // Original user inputs for Edit flow
-  const [formData, setFormData] = useState(null); // Normalized for calculations
+  const [discoveryData, setDiscoveryData] = useState(null); // Goal discovery answers
+  const [rawFormData, setRawFormData] = useState(null);
+  const [formData, setFormData] = useState(null);
   const [holdResult, setHoldResult] = useState(null);
   const [sellResult, setSellResult] = useState(null);
   const [exchangeResult, setExchangeResult] = useState(null);
@@ -43,10 +44,17 @@ export default function App() {
   // Navigation handler
   const handleNav = (target) => {
     if (target === 'landing') { setView('landing'); window.scrollTo({top:0,behavior:'smooth'}); }
-    else if (target === 'calculator') { setView('questionnaire'); }
+    else if (target === 'calculator') { setView(discoveryData ? 'questionnaire' : 'discovery'); }
     else if (target === 'features') { if(view!=='landing') setView('landing'); setTimeout(()=>featRef.current?.scrollIntoView({behavior:'smooth'}),100); }
     else if (target === 'pro') { if(view!=='landing') setView('landing'); setTimeout(()=>proRef.current?.scrollIntoView({behavior:'smooth'}),100); }
     else if (target === 'resources') { if(view!=='landing') setView('landing'); setTimeout(()=>docsRef.current?.scrollIntoView({behavior:'smooth'}),100); }
+  };
+
+  // Discovery complete
+  const handleDiscoveryComplete = (data) => {
+    setDiscoveryData(data);
+    setView('questionnaire');
+    window.scrollTo({top:0,behavior:'smooth'});
   };
 
   // Run analysis
@@ -60,7 +68,7 @@ export default function App() {
       taxBracket: (parseFloat(data.taxBracket)||32)/100,
       sellingCostsPct: parseFloat(data.sellingCostsPct)||7.5,
     };
-    setRawFormData(data); // Keep original inputs for Edit
+    setRawFormData(data);
     setFormData(n);
     setHoldResult(calculateHoldScenario(n, 10));
     setSellResult(calculateSellScenario(n, 10, n.alternativeReturn));
@@ -85,11 +93,16 @@ export default function App() {
         <LandingPage
           isPro={isPro}
           onOpenCalc={() => setView('questionnaire')}
+          onStartDiscovery={() => setView('discovery')}
           onProClick={() => setShowProGate(true)}
           featRef={featRef}
           proRef={proRef}
           docsRef={docsRef}
         />
+      )}
+
+      {view === 'discovery' && (
+        <GoalDiscovery onComplete={handleDiscoveryComplete} dark={dark}/>
       )}
 
       {view === 'questionnaire' && (
@@ -108,6 +121,7 @@ export default function App() {
           dark={dark}
           isPro={isPro}
           onProClick={() => setShowProGate(true)}
+          discoveryData={discoveryData}
         />
       )}
 
@@ -117,6 +131,7 @@ export default function App() {
         <ProGate
           onUnlock={(user) => { setIsPro(true); setShowProGate(false); }}
           onClose={() => setShowProGate(false)}
+          discoveryData={discoveryData}
         />
       )}
     </div>
