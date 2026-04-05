@@ -1,5 +1,5 @@
 // Theme system - VHG Brand Guide v4.1
-export const APP_VERSION = '3.4.0';
+export const APP_VERSION = '3.4.2';
 
 export const darkVars = {
   '--bg-primary':'#0B1120','--bg-secondary':'#151D2E','--bg-tertiary':'#0F172A',
