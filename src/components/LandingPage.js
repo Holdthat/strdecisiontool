@@ -1,7 +1,8 @@
 import React from 'react';
 import { Card, SectionLabel, GoldDivider } from './UI';
 
-export default function LandingPage({onOpenCalc, onStartDiscovery, onProClick, isPro, featRef, proRef, docsRef}) {
+export default function LandingPage({onOpenCalc, onStartDiscovery, onLoadSaved, onProClick, isPro, featRef, proRef, docsRef}) {
+  const hasSaved = (()=>{try{const s=JSON.parse(localStorage.getItem('vhg-saved-properties')||'[]');return s.length>0;}catch(_e){return false;}})();
   const features = [
     {icon:'📊',title:'Personalized Analysis',desc:'Tell us your goals and risk tolerance. We tailor the analysis to what matters most to you.'},
     {icon:'🏦',title:'Hold vs. Sell vs. 1031',desc:'Three-scenario modeling with 10-year projections. Cash flow, equity, and wealth side by side.'},
@@ -36,6 +37,7 @@ export default function LandingPage({onOpenCalc, onStartDiscovery, onProClick, i
         <p style={{fontSize:15,color:'var(--text-faint)',lineHeight:1.6,maxWidth:520,margin:'0 auto 28px'}}>It starts with a few quick questions about your goals. No account needed.</p>
         <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
           <button onClick={onStartDiscovery||onOpenCalc} style={{padding:'16px 32px',borderRadius:8,border:'none',background:'var(--accent)',color:'#fff',fontSize:16,fontWeight:700,cursor:'pointer'}}>Let's Figure It Out →</button>
+          {hasSaved&&<button onClick={onLoadSaved} style={{padding:'16px 28px',borderRadius:8,border:'none',background:'var(--gold)',color:'#fff',fontSize:15,fontWeight:700,cursor:'pointer'}}>My Properties</button>}
           <button onClick={()=>featRef.current?.scrollIntoView({behavior:'smooth'})} style={{padding:'16px 28px',borderRadius:8,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--text-muted)',fontSize:15,cursor:'pointer'}}>How It Works</button>
         </div>
         <div style={{display:'flex',justifyContent:'center',gap:32,marginTop:40,flexWrap:'wrap'}}>
