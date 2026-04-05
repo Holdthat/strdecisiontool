@@ -8,7 +8,7 @@ import { Card, SectionLabel, Slider, TabBar, ChartTooltip, InputField, SelectFie
 import { calculateHoldScenario, calculateSellScenario, calculate1031Scenario, calculateTaxBenefits, calculateMortgageScenario, fmt, fmtK } from '../utils/calculations';
 import { chartColors } from '../utils/theme';
 
-export default function Dashboard({formData, rawFormData, sellResult, exchangeResult, onEditAssumptions, dark, isPro, onProClick, discoveryData, proUserEmail}) {
+export default function Dashboard({formData, rawFormData, sellResult, exchangeResult, onEditAssumptions, onLoadProperty, dark, isPro, onProClick, discoveryData, proUserEmail}) {
   const show1031 = !!exchangeResult;
   const colors = chartColors(dark);
   const isBuyer = discoveryData?.situation_value === 'evaluating-purchase';
@@ -185,6 +185,14 @@ ${discoveryData?`<h2>Client Profile</h2>
   <tr><td style="color:#94A3B8;">Risk Tolerance</td><td>${discoveryData.risk||'-'}</td></tr>
   <tr><td style="color:#94A3B8;">Timeline</td><td>${discoveryData.timeline||'-'}</td></tr>
   <tr><td style="color:#94A3B8;">Experience</td><td>${discoveryData.experience||'-'}</td></tr>
+</table>`:''}
+
+${savedProperties.length>1?`<h2>Saved Properties Comparison</h2>
+<table>
+  <tr><th>Property</th><th>${HOLD_LABEL} Total</th><th>${SELL_LABEL}</th><th>Recommendation</th></tr>
+  ${savedProperties.map(sp=>{
+    return `<tr><td>${sp.location||sp.name}</td><td class="green">${fmtK(sp.holdWealth)}</td><td style="color:#3B82F6;">${fmtK(sp.sellWealth)}</td><td style="font-weight:700;">${sp.recommendation}</td></tr>`;
+  }).join('')}
 </table>`:''}
 
 <div class="disclaimer">
@@ -1112,6 +1120,7 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
               <div style={{textAlign:'right'}}><div style={{fontSize:14,fontWeight:700,color:'var(--accent)'}}>{fmtK(p.holdWealth)}</div><div style={{fontSize:9,color:'var(--text-faint)'}}>{HOLD_LABEL}</div></div>
               <div style={{textAlign:'right'}}><div style={{fontSize:14,fontWeight:700,color:'var(--blue)'}}>{fmtK(p.sellWealth)}</div><div style={{fontSize:9,color:'var(--text-faint)'}}>{SELL_LABEL}</div></div>
               <button onClick={()=>deleteProperty(p.id)} style={{padding:'4px 8px',borderRadius:6,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--red)',fontSize:11,cursor:'pointer'}}>x</button>
+              <button onClick={()=>onLoadProperty(p.formData)} style={{padding:'4px 10px',borderRadius:6,border:'none',background:'var(--accent)',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer'}}>Load</button>
             </div>
           </div>
         ))}
@@ -1197,7 +1206,13 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
 
       {/* Property info + action buttons */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
-        <div style={{fontSize:16,fontWeight:600,color:'var(--text-muted)'}}>{formData.propertyType} · {formData.location}</div>
+        <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+          <div style={{fontSize:16,fontWeight:600,color:'var(--text-muted)'}}>{formData.propertyType} · {formData.location}</div>
+          <div style={{padding:'4px 12px',borderRadius:20,background:rec.color==='var(--accent)'?'rgba(22,122,94,0.12)':rec.color==='var(--blue)'?'rgba(59,130,246,0.12)':'rgba(139,92,246,0.12)',border:`1px solid ${rec.color}`,display:'flex',alignItems:'center',gap:6}}>
+            <div style={{width:6,height:6,borderRadius:'50%',background:rec.color}}/>
+            <span style={{fontSize:13,fontWeight:700,color:rec.color}}>{rec.text}</span>
+          </div>
+        </div>
         <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
           <button onClick={()=>{
             // Compact share: only non-empty, non-default values with short keys
