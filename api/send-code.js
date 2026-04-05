@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   if (!email || !name) return res.status(400).json({ error: 'Name and email required' });
 
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
-  const FROM_EMAIL = process.env.FROM_EMAIL || 'STRInvestCalc <noreply@vacationhomegroup.net>';
+  const FROM_EMAIL = process.env.FROM_EMAIL || 'PropertyPath <noreply@vacationhomegroup.net>';
   if (!RESEND_API_KEY) return res.status(500).json({ error: 'Email service not configured.' });
 
   const code = String(Math.floor(100000 + Math.random() * 900000));
@@ -36,11 +36,11 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         from: FROM_EMAIL,
         to: email,
-        subject: 'Your STRInvestCalc Pro Verification Code',
+        subject: 'Your PropertyPath Pro Verification Code',
         html: `
           <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#F8FAFC;border-radius:12px;">
             <div style="text-align:center;margin-bottom:24px;">
-              <h1 style="font-size:24px;color:#167A5E;margin:0;">STR<span style="color:#9A7820;">Invest</span>Calc</h1>
+              <h1 style="font-size:24px;color:#167A5E;margin:0;">Property<span style="color:#9A7820;">Path</span></h1>
               <p style="color:#94A3B8;font-size:13px;margin-top:4px;">by Vacation Home Group</p>
             </div>
             <p style="font-size:16px;color:#1E293B;line-height:1.6;">Hi ${name},</p>

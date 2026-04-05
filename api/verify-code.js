@@ -45,7 +45,7 @@ export default async function handler(req, res) {
   const userPhone = phone || '';
 
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
-  const FROM_EMAIL = process.env.FROM_EMAIL || 'STRInvestCalc <noreply@vacationhomegroup.net>';
+  const FROM_EMAIL = process.env.FROM_EMAIL || 'PropertyPath <noreply@vacationhomegroup.net>';
   const RESEND_AUDIENCE_ID = process.env.RESEND_AUDIENCE_ID;
 
   // ── 1. Add to Resend audience ──
@@ -80,11 +80,11 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           from: FROM_EMAIL,
           to: notifyEmails,
-          subject: `STRInvestCalc Pro Signup: ${userName}`,
+          subject: `PropertyPath Pro Signup: ${userName}`,
           html: `
             <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px;background:#F8FAFC;border-radius:12px;">
               <div style="text-align:center;margin-bottom:24px;">
-                <h1 style="font-size:22px;color:#167A5E;margin:0;">STR<span style="color:#9A7820;">Invest</span>Calc</h1>
+                <h1 style="font-size:22px;color:#167A5E;margin:0;">Property<span style="color:#9A7820;">Path</span></h1>
                 <p style="color:#94A3B8;font-size:12px;margin-top:4px;">New Pro Signup Notification</p>
               </div>
               <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;padding:20px;margin-bottom:20px;">
@@ -92,7 +92,7 @@ export default async function handler(req, res) {
                   <tr><td style="padding:6px 0;color:#94A3B8;width:100px;">Name</td><td style="padding:6px 0;font-weight:700;">${userName}</td></tr>
                   <tr><td style="padding:6px 0;color:#94A3B8;">Email</td><td style="padding:6px 0;"><a href="mailto:${email}" style="color:#167A5E;">${email}</a></td></tr>
                   ${userPhone ? `<tr><td style="padding:6px 0;color:#94A3B8;">Phone</td><td style="padding:6px 0;"><a href="tel:${userPhone}" style="color:#167A5E;">${userPhone}</a></td></tr>` : ''}
-                  <tr><td style="padding:6px 0;color:#94A3B8;">App</td><td style="padding:6px 0;">STRInvestCalc Pro</td></tr>
+                  <tr><td style="padding:6px 0;color:#94A3B8;">App</td><td style="padding:6px 0;">PropertyPath Pro</td></tr>
                   <tr><td style="padding:6px 0;color:#94A3B8;">Time</td><td style="padding:6px 0;">${now} ET</td></tr>
                 </table>
               </div>
@@ -126,16 +126,16 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           from: FROM_EMAIL,
           to: email,
-          subject: 'Welcome to STRInvestCalc Pro!',
+          subject: 'Welcome to PropertyPath Pro!',
           html: `
             <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#F8FAFC;border-radius:12px;">
               <div style="text-align:center;margin-bottom:24px;">
-                <h1 style="font-size:24px;color:#167A5E;margin:0;">STR<span style="color:#9A7820;">Invest</span>Calc</h1>
+                <h1 style="font-size:24px;color:#167A5E;margin:0;">Property<span style="color:#9A7820;">Path</span></h1>
                 <p style="color:#94A3B8;font-size:13px;margin-top:4px;">by Vacation Home Group</p>
               </div>
               <p style="font-size:16px;color:#1E293B;line-height:1.6;">Hi ${userName},</p>
               <p style="font-size:16px;color:#1E293B;line-height:1.6;">
-                Welcome to STRInvestCalc Pro! You now have access to:
+                Welcome to PropertyPath Pro! You now have access to:
               </p>
               <ul style="font-size:15px;color:#1E293B;line-height:2;padding-left:20px;">
                 <li><strong>Tax Benefits Calculator</strong></li>
