@@ -136,6 +136,16 @@ export default function App() {
           isPro={isPro}
           onOpenCalc={() => setView('questionnaire')}
           onStartDiscovery={() => setView('discovery')}
+          onLoadSaved={() => {
+            try {
+              const saved = JSON.parse(localStorage.getItem('vhg-saved-properties')||'[]');
+              if (saved.length > 0) {
+                const latest = saved[saved.length - 1];
+                if (latest.discoveryData) setDiscoveryData(latest.discoveryData);
+                handleAnalyze(latest.formData);
+              }
+            } catch(_e) {}
+          }}
           onProClick={() => setShowProGate(true)}
           featRef={featRef}
           proRef={proRef}
