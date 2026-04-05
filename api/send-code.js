@@ -18,12 +18,26 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { email, name, phone } = req.body;
+  const { email, name, phone, skipCode, customSubject, customHtml } = req.body;
   if (!email || !name) return res.status(400).json({ error: 'Name and email required' });
 
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
   const FROM_EMAIL = process.env.FROM_EMAIL || 'PropertyPath <noreply@vacationhomegroup.net>';
   if (!RESEND_API_KEY) return res.status(500).json({ error: 'Email service not configured.' });
+
+  // Custom email mode (for sending AI summaries)
+  if (skipCode && customSubject && customHtml) {
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
+        body: JSON.stringify({ from: FROM_EMAIL, to: email, subject: customSubject, html: customHtml }),
+      });
+      return res.status(response.ok ? 200 : 500).json(await response.json());
+    } catch (err) {
+      return res.status(500).json({ error: 'Email send failed.' });
+    }
+  }
 
   const code = String(Math.floor(100000 + Math.random() * 900000));
   const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
