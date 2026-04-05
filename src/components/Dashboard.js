@@ -60,7 +60,7 @@ export default function Dashboard({formData, rawFormData, sellResult, exchangeRe
   <tr><td style="color:#94A3B8;">Annual Gross Rent</td><td>${fmt(formData.annualRent)}</td></tr>
   <tr><td style="color:#94A3B8;">Annual Expenses</td><td>${fmt(formData.annualExpenses)}</td></tr>
   <tr><td style="color:#94A3B8;">Mortgage</td><td>${fmt(formData.mortgageBalance)} at ${(parseFloat(formData.mortgageRate)*100).toFixed(1)}%</td></tr>
-  <tr><td style="color:#94A3B8;">Selling Costs</td><td>${parseFloat(formData.sellingCostsPct)||7.5}%</td></tr>
+  <tr><td style="color:#94A3B8;">${isBuyer?'Purchase Costs':'Selling Costs'}</td><td>${parseFloat(formData.sellingCostsPct)||(isBuyer?3:7.5)}%</td></tr>
 </table>
 
 <h2>Key Metrics</h2>
@@ -296,7 +296,7 @@ PROPERTY DATA:
 - Expense Ratio: ${((parseFloat(formData.annualExpenses)/parseFloat(formData.annualRent))*100).toFixed(0)}% of gross rent
 - Vacancy: ${sens.vacancyRate}% (remember: 40-55% is normal for STR)
 - Mortgage: ${fmt(formData.mortgageBalance)} at ${(parseFloat(formData.mortgageRate)*100).toFixed(1)}%
-- Selling Costs: ${parseFloat(formData.sellingCostsPct)||7.5}%
+- ${isBuyer?'Purchase/Closing Costs':'Selling Costs'}: ${parseFloat(formData.sellingCostsPct)||(isBuyer?3:7.5)}%
 - Appreciation assumption: ${sens.appreciation}%/yr
 - Alternative return assumption: ${sens.altReturn}%
 
@@ -390,7 +390,7 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginBottom:20}}>
         <Card style={{padding:'14px 16px'}}><SectionLabel tip="Net Operating Income divided by property value. Measures investment yield independent of financing. Higher is better.">Cap Rate</SectionLabel><div style={{fontSize:22,fontWeight:700,color:'var(--gold)'}}>{calcCapRate.toFixed(1)}%</div><p style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>calculated from inputs</p></Card>
         <Card style={{padding:'14px 16px'}}><SectionLabel tip="Year 1 net cash flow: rental income minus expenses, maintenance, and debt service.">Cash Flow /Yr</SectionLabel><div style={{fontSize:22,fontWeight:700,color:hold.yearlyData[0]?.netCashFlow>=0?'var(--accent)':'var(--red)'}}>{fmtK(hold.yearlyData[0]?.netCashFlow||0)}</div><p style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>year 1 net</p></Card>
-        <Card style={{padding:'14px 16px'}}><SectionLabel tip="Your total selling costs as a percentage of sale price. Includes agent commissions and closing costs.">Selling Costs</SectionLabel><div style={{fontSize:22,fontWeight:700,color:'var(--text-secondary)'}}>{parseFloat(formData.sellingCostsPct)||7.5}%</div><p style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{fmtK(sell.sellingCosts)}</p></Card>
+        <Card style={{padding:'14px 16px'}}><SectionLabel tip={isBuyer?"Buyer closing costs as % of purchase price. Reduces your starting equity.":"Your total selling costs as a percentage of sale price. Includes agent commissions and closing costs."}>{isBuyer?'Purchase Costs':'Selling Costs'}</SectionLabel><div style={{fontSize:22,fontWeight:700,color:'var(--text-secondary)'}}>{parseFloat(formData.sellingCostsPct)||(isBuyer?3:7.5)}%</div><p style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{fmtK(isBuyer?hold.closingCosts:sell.sellingCosts)}</p></Card>
       </div>
 
       {/* Maintenance Alerts */}
