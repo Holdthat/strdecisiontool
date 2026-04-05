@@ -553,10 +553,33 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
       </Card>
 
       {/* Action buttons */}
-      <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:16}}>
-        {proUserEmail&&<button onClick={emailResults} style={{padding:'10px 20px',borderRadius:8,border:'none',background:'var(--accent)',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer'}}>Email My Results</button>}
-        <button onClick={saveCurrentProperty} style={{padding:'10px 20px',borderRadius:8,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--text-primary)',fontSize:14,cursor:'pointer'}}>Save Property ({savedProperties.length}/3)</button>
-      </div>
+      {(()=>{
+        const existingIdx = savedProperties.findIndex(p => p.location === formData.location);
+        const isSaved = existingIdx !== -1;
+        return (
+          <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:16}}>
+            {proUserEmail&&<button onClick={emailResults} style={{padding:'10px 20px',borderRadius:8,border:'none',background:'var(--accent)',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer'}}>Email My Results</button>}
+            {isSaved ? (
+              <button onClick={()=>{
+                const updated = [...savedProperties];
+                updated[existingIdx] = {...updated[existingIdx],
+                  formData: rawFormData || formData,
+                  holdWealth: hold.totalWealth,
+                  sellWealth: sell.totalWealthAtEnd,
+                  recommendation: rec.text,
+                  aiSummary: aiSummary || updated[existingIdx].aiSummary,
+                  savedAt: new Date().toLocaleDateString(),
+                };
+                setSavedProperties(updated);
+                try{localStorage.setItem('vhg-saved-properties',JSON.stringify(updated));}catch(_e){}
+                alert('Property updated!');
+              }} style={{padding:'10px 20px',borderRadius:8,border:'1px solid var(--accent)',background:'transparent',color:'var(--accent)',fontSize:14,fontWeight:600,cursor:'pointer'}}>Update Saved Property</button>
+            ) : (
+              <button onClick={saveCurrentProperty} style={{padding:'10px 20px',borderRadius:8,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--text-primary)',fontSize:14,cursor:'pointer'}}>Save Property ({savedProperties.length}/3)</button>
+            )}
+          </div>
+        );
+      })()}
     </>
   );
   // ═══════════════════════════════════════════════════════════
