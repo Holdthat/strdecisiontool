@@ -15,6 +15,9 @@ export default function Dashboard({formData, rawFormData, sellResult, exchangeRe
   const HOLD_LABEL = isBuyer ? 'Buy & Hold' : 'Hold';
   const SELL_LABEL = isBuyer ? "Don't Buy, Invest" : 'Sell & Invest';
 
+  // AI Summary state (declared early so loadProperty can use it)
+  const [aiSummary, setAiSummary] = useState('');
+
   // Saved Properties (localStorage)
   const [savedProperties, setSavedProperties] = useState(() => {
     try { return JSON.parse(localStorage.getItem('vhg-saved-properties')||'[]'); } catch(_e) { return []; }
@@ -29,6 +32,7 @@ export default function Dashboard({formData, rawFormData, sellResult, exchangeRe
       holdWealth: hold.totalWealth,
       sellWealth: sell.totalWealthAtEnd,
       recommendation: rec.text,
+      aiSummary: aiSummary || '',
       savedAt: new Date().toLocaleDateString(),
     };
     const updated = [...savedProperties.slice(-2), entry]; // Keep max 3
@@ -39,6 +43,11 @@ export default function Dashboard({formData, rawFormData, sellResult, exchangeRe
     const updated = savedProperties.filter(p => p.id !== id);
     setSavedProperties(updated);
     try { localStorage.setItem('vhg-saved-properties', JSON.stringify(updated)); } catch(_e) {}
+  };
+  const loadProperty = (prop) => {
+    // Restore AI summary if saved, otherwise clear
+    setAiSummary(prop.aiSummary || '');
+    onLoadProperty(prop.formData);
   };
 
   // Onboarding tour
@@ -241,7 +250,6 @@ ${savedProperties.length>1?`<h2>Saved Properties Comparison</h2>
   ]);
 
   // AI Summary with user controls
-  const [aiSummary, setAiSummary] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiProvider, setAiProvider] = useState('claude');
   const [aiPreset, setAiPreset] = useState('investor-brief');
@@ -1120,7 +1128,7 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
               <div style={{textAlign:'right'}}><div style={{fontSize:14,fontWeight:700,color:'var(--accent)'}}>{fmtK(p.holdWealth)}</div><div style={{fontSize:9,color:'var(--text-faint)'}}>{HOLD_LABEL}</div></div>
               <div style={{textAlign:'right'}}><div style={{fontSize:14,fontWeight:700,color:'var(--blue)'}}>{fmtK(p.sellWealth)}</div><div style={{fontSize:9,color:'var(--text-faint)'}}>{SELL_LABEL}</div></div>
               <button onClick={()=>deleteProperty(p.id)} style={{padding:'4px 8px',borderRadius:6,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--red)',fontSize:11,cursor:'pointer'}}>x</button>
-              <button onClick={()=>onLoadProperty(p.formData)} style={{padding:'4px 10px',borderRadius:6,border:'none',background:'var(--accent)',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer'}}>Load</button>
+              <button onClick={()=>loadProperty(p)} style={{padding:'4px 10px',borderRadius:6,border:'none',background:'var(--accent)',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer'}}>Load</button>
             </div>
           </div>
         ))}
