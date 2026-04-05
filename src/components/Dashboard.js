@@ -11,6 +11,9 @@ import { chartColors } from '../utils/theme';
 export default function Dashboard({formData, rawFormData, sellResult, exchangeResult, onEditAssumptions, dark, isPro, onProClick, discoveryData, proUserEmail}) {
   const show1031 = !!exchangeResult;
   const colors = chartColors(dark);
+  const isBuyer = discoveryData?.situation_value === 'evaluating-purchase';
+  const HOLD_LABEL = isBuyer ? 'Buy & Hold' : 'Hold';
+  const SELL_LABEL = isBuyer ? "Don't Buy, Invest" : 'Sell & Invest';
 
   // Simple markdown to HTML renderer
   const renderMarkdown = (text) => {
@@ -62,8 +65,8 @@ export default function Dashboard({formData, rawFormData, sellResult, exchangeRe
 
 <h2>Key Metrics</h2>
 <div>
-  <div class="metric"><div class="metric-val green">${fmtK(hold.totalWealth)}</div><div class="metric-label">Hold Total (${sens.yearsToHold}yr)</div></div>
-  <div class="metric"><div class="metric-val" style="color:#3B82F6;">${fmtK(sell.totalWealthAtEnd)}</div><div class="metric-label">Sell & Invest</div></div>
+  <div class="metric"><div class="metric-val green">${fmtK(hold.totalWealth)}</div><div class="metric-label">${HOLD_LABEL} Total (${sens.yearsToHold}yr)</div></div>
+  <div class="metric"><div class="metric-val" style="color:#3B82F6;">${fmtK(sell.totalWealthAtEnd)}</div><div class="metric-label">${SELL_LABEL}</div></div>
   ${show1031?`<div class="metric"><div class="metric-val" style="color:#8B5CF6;">${fmtK(exch.totalWealth)}</div><div class="metric-label">1031 Exchange</div></div>`:''}
   <div class="metric"><div class="metric-val" style="color:${rec.text.includes('Hold')?'#167A5E':'#3B82F6'};">${rec.text}</div><div class="metric-label">Recommendation</div></div>
   <div class="metric"><div class="metric-val gold">${calcCapRate.toFixed(1)}%</div><div class="metric-label">Cap Rate</div></div>
@@ -88,7 +91,7 @@ ${hold.maintEvents&&hold.maintEvents.length>0?`
 
 <h2>Year-by-Year Projection</h2>
 <table>
-  <tr><th>Year</th><th>Property Value</th><th>Equity</th><th>Cash Flow</th><th>Hold Total</th><th>Sell Value</th></tr>
+  <tr><th>Year</th><th>Property Value</th><th>Equity</th><th>Cash Flow</th><th>${HOLD_LABEL} Total</th><th>${SELL_LABEL}</th></tr>
   ${hold.yearlyData.slice(0,sens.yearsToHold).map((d,i)=>`<tr><td>${d.year}</td><td>${fmtK(d.propertyValue)}</td><td>${fmtK(d.equity)}</td><td class="${d.netCashFlow>=0?'green':'red'}">${fmtK(d.netCashFlow)}</td><td>${fmtK(d.equity+d.cumulativeCashFlow)}</td><td>${fmtK(sell.yearlyData[i]?.investedValue||0)}</td></tr>`).join('')}
 </table>
 
@@ -187,9 +190,9 @@ ${discoveryData?`<h2>Client Profile</h2>
   const rec = useMemo(() => {
     const hW=hold.totalWealth, sW=sell.totalWealthAtEnd, xW=exch?.totalWealth||0;
     if(show1031&&xW>hW&&xW>sW) return {text:'1031 Exchange',color:'var(--purple)'};
-    if(hW>sW) return {text:'Hold Property',color:'var(--accent)'};
-    return {text:'Sell & Invest',color:'var(--blue)'};
-  }, [hold, sell, exch, show1031]);
+    if(hW>sW) return {text:isBuyer?'Buy & Hold':'Hold Property',color:'var(--accent)'};
+    return {text:isBuyer?"Don't Buy, Invest Instead":'Sell & Invest',color:'var(--blue)'};
+  }, [hold, sell, exch, show1031, isBuyer]);
 
   // ── Chart data ──
   const wealthChart = useMemo(() => {
@@ -268,7 +271,10 @@ Tailor your analysis to this profile.` : '';
     else conditionNotes.push(`HVAC is ${hvacAge} years old (good condition)`);
     if(whAge>=10) conditionNotes.push(`Water heater is ${whAge} years old (typical life 10-15yr)`);
 
-    const prompt = `You are a senior real estate investment analyst who specializes in SHORT-TERM RENTALS (STR) — vacation homes, Airbnb, VRBO properties. You understand the STR market deeply.${discoveryContext}
+    const buyerContext = isBuyer ? `
+IMPORTANT: This user does NOT currently own this property. They are EVALUATING A POTENTIAL PURCHASE. Frame your entire analysis as a buy/don't-buy decision. Instead of "hold vs sell," compare "buy and hold this property" vs "don't buy and invest the capital elsewhere." Never refer to selling the property since they don't own it yet. Focus on whether the purchase price, projected cash flow, and appreciation justify the investment compared to alternative uses of their capital.` : '';
+
+    const prompt = `You are a senior real estate investment analyst who specializes in SHORT-TERM RENTALS (STR) — vacation homes, Airbnb, VRBO properties. You understand the STR market deeply.${discoveryContext}${buyerContext}
 
 CRITICAL — STR INDUSTRY BENCHMARKS (use these, NOT long-term rental norms):
 - Vacancy: 40-55% is NORMAL for STR. Most vacation rentals are occupied 45-60% of the year. Under 30% vacancy is exceptional. Over 60% may indicate a problem. Do NOT judge STR vacancy by long-term rental standards (where 5-10% is normal).
@@ -299,8 +305,8 @@ ${conditionNotes.join('\n')}
 ${hold.maintEvents&&hold.maintEvents.length>0?`Projected capital expenses: ${hold.maintEvents.map(e=>`${e.component} in Year ${e.year} (${fmtK(e.cost)}${e.year===1?' - OVERDUE':''})`).join(', ')}`:'No major replacements projected during hold period.'}
 
 ANALYSIS RESULTS:
-- Hold ${sens.yearsToHold} years total wealth: ${fmtK(hold.totalWealth)}
-- Sell & invest total wealth: ${fmtK(sell.totalWealthAtEnd)}${show1031?`\n- 1031 Exchange total wealth: ${fmtK(exch.totalWealth)}`:''}
+- ${HOLD_LABEL} ${sens.yearsToHold} years total wealth: ${fmtK(hold.totalWealth)}
+- ${SELL_LABEL} total wealth: ${fmtK(sell.totalWealthAtEnd)}${show1031?`\n- 1031 Exchange total wealth: ${fmtK(exch.totalWealth)}`:''}
 - Year 1 Cash Flow: ${fmtK(hold.yearlyData[0]?.netCashFlow||0)}
 - Calculated Cap Rate: ${calcCapRate.toFixed(1)}%
 - Recommendation: ${rec.text}, advantage: ${fmtK(Math.abs(hold.totalWealth-sell.totalWealthAtEnd))}
@@ -374,8 +380,8 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
   const renderOverview = () => (
     <>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginBottom:20}}>
-        <Card style={{padding:'16px 18px'}}><SectionLabel tip="Property equity plus cumulative net cash flow over your hold period.">Hold Total</SectionLabel><div style={{fontSize:28,fontWeight:700,color:'var(--accent)'}}>{fmtK(hold.totalWealth)}</div><p style={{fontSize:13,color:'var(--text-muted)',marginTop:4}}>{sens.yearsToHold}yr equity+cash</p></Card>
-        <Card style={{padding:'16px 18px'}}><SectionLabel tip="After-tax sale proceeds invested at your chosen alternative return rate.">Sell & Invest</SectionLabel><div style={{fontSize:28,fontWeight:700,color:'var(--blue)'}}>{fmtK(sell.totalWealthAtEnd)}</div><p style={{fontSize:13,color:'var(--text-muted)',marginTop:4}}>At {sens.altReturn}% return</p></Card>
+        <Card style={{padding:'16px 18px'}}><SectionLabel tip="Property equity plus cumulative net cash flow over your hold period.">{HOLD_LABEL} Total</SectionLabel><div style={{fontSize:28,fontWeight:700,color:'var(--accent)'}}>{fmtK(hold.totalWealth)}</div><p style={{fontSize:13,color:'var(--text-muted)',marginTop:4}}>{sens.yearsToHold}yr equity+cash</p></Card>
+        <Card style={{padding:'16px 18px'}}><SectionLabel tip="After-tax sale proceeds invested at your chosen alternative return rate.">{SELL_LABEL}</SectionLabel><div style={{fontSize:28,fontWeight:700,color:'var(--blue)'}}>{fmtK(sell.totalWealthAtEnd)}</div><p style={{fontSize:13,color:'var(--text-muted)',marginTop:4}}>At {sens.altReturn}% return</p></Card>
         {show1031&&<Card style={{padding:'16px 18px'}}><SectionLabel tip="Tax-deferred exchange into replacement property. Defers capital gains and depreciation recapture.">1031 Exchange</SectionLabel><div style={{fontSize:28,fontWeight:700,color:'var(--purple)'}}>{fmtK(exch.totalWealth)}</div><p style={{fontSize:13,color:'var(--text-muted)',marginTop:4}}>Deferred: {fmtK(exch.taxDeferred)}</p></Card>}
         <Card style={{padding:'16px 18px',background:'var(--bg-subtle)',border:'1px solid var(--border-accent)'}}><SectionLabel tip="Whichever scenario produces the highest total wealth wins.">Recommendation</SectionLabel><div style={{fontSize:24,fontWeight:700,color:rec.color}}>{rec.text}</div><p style={{fontSize:13,color:'var(--text-muted)',marginTop:4}}>+{fmtK(Math.abs(hold.totalWealth-sell.totalWealthAtEnd))}</p></Card>
       </div>
@@ -418,8 +424,8 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
             <YAxis stroke={colors.muted} fontSize={10} tickFormatter={fmtK}/>
             <Tooltip content={<ChartTooltip/>}/>
             <Legend wrapperStyle={{fontSize:11}}/>
-            <Area type="monotone" dataKey="hold" name="Hold" stroke={colors.accent} fill={colors.accent} fillOpacity={0.15} strokeWidth={2}/>
-            <Area type="monotone" dataKey="sell" name="Sell" stroke={colors.blue} fill={colors.blue} fillOpacity={0.1} strokeWidth={2}/>
+            <Area type="monotone" dataKey="hold" name={HOLD_LABEL} stroke={colors.accent} fill={colors.accent} fillOpacity={0.15} strokeWidth={2}/>
+            <Area type="monotone" dataKey="sell" name={SELL_LABEL} stroke={colors.blue} fill={colors.blue} fillOpacity={0.1} strokeWidth={2}/>
             {show1031&&<Area type="monotone" dataKey="exchange" name="1031" stroke={colors.purple} fill={colors.purple} fillOpacity={0.1} strokeWidth={2}/>}
           </AreaChart>
         </ResponsiveContainer>
@@ -432,8 +438,8 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
             <PolarGrid stroke={colors.grid}/>
             <PolarAngleAxis dataKey="metric" tick={{fontSize:10,fill:colors.muted}}/>
             <PolarRadiusAxis tick={false} axisLine={false}/>
-            <Radar name="Hold" dataKey="hold" stroke={colors.accent} fill={colors.accent} fillOpacity={0.2}/>
-            <Radar name="Sell" dataKey="sell" stroke={colors.blue} fill={colors.blue} fillOpacity={0.15}/>
+            <Radar name={HOLD_LABEL} dataKey="hold" stroke={colors.accent} fill={colors.accent} fillOpacity={0.2}/>
+            <Radar name={SELL_LABEL} dataKey="sell" stroke={colors.blue} fill={colors.blue} fillOpacity={0.15}/>
             {show1031&&<Radar name="1031" dataKey="exchange" stroke={colors.purple} fill={colors.purple} fillOpacity={0.15}/>}
             <Legend wrapperStyle={{fontSize:11}}/>
           </RadarChart>
@@ -502,7 +508,7 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
         <SectionLabel>Year-by-Year Comparison</SectionLabel>
         <table style={{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:500}}>
           <thead><tr style={{borderBottom:'1px solid var(--border-primary)'}}>
-            {['Yr','Prop Value','Equity','Cash Flow','Hold Total','Sell Value',show1031&&'1031'].filter(Boolean).map(h=>
+            {['Yr','Prop Value','Equity','Cash Flow',HOLD_LABEL+' Total',SELL_LABEL,show1031&&'1031'].filter(Boolean).map(h=>
               <th key={h} style={{padding:'8px 4px',textAlign:'right',color:'var(--gold)',fontWeight:700,fontSize:11,textTransform:'uppercase',fontFamily:"'JetBrains Mono',monospace"}}>{h}</th>
             )}
           </tr></thead>
@@ -705,8 +711,8 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
             </div>
             {/* Quick metrics */}
             <div style={{display:'flex',gap:12,alignItems:'center',flexShrink:0}}>
-              <div style={{textAlign:'right'}}><div style={{fontSize:13,fontWeight:700,color:'var(--accent)'}}>{fmtK(s.hold.totalWealth)}</div><div style={{fontSize:9,color:'var(--text-faint)'}}>Hold</div></div>
-              <div style={{textAlign:'right'}}><div style={{fontSize:13,fontWeight:700,color:'var(--blue)'}}>{fmtK(s.sell.totalWealthAtEnd)}</div><div style={{fontSize:9,color:'var(--text-faint)'}}>Sell</div></div>
+              <div style={{textAlign:'right'}}><div style={{fontSize:13,fontWeight:700,color:'var(--accent)'}}>{fmtK(s.hold.totalWealth)}</div><div style={{fontSize:9,color:'var(--text-faint)'}}>{HOLD_LABEL}</div></div>
+              <div style={{textAlign:'right'}}><div style={{fontSize:13,fontWeight:700,color:'var(--blue)'}}>{fmtK(s.sell.totalWealthAtEnd)}</div><div style={{fontSize:9,color:'var(--text-faint)'}}>{SELL_LABEL}</div></div>
               <button onClick={()=>setSens({...s.sens})} style={{padding:'4px 10px',borderRadius:6,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--accent)',fontSize:11,cursor:'pointer'}}>Load</button>
               <button onClick={()=>{setSnapshots(snapshots.filter((_,j)=>j!==i));setCompareSelected(prev=>prev.filter(j=>j!==i).map(j=>j>i?j-1:j));}} style={{padding:'4px 8px',borderRadius:6,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--red)',fontSize:11,cursor:'pointer'}}>x</button>
             </div>
@@ -722,14 +728,14 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
         <Card style={{marginBottom:16}}>
           <SectionLabel>Scenario Comparison: Total Wealth</SectionLabel>
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={compareData.map((s,i)=>({name:s.name,Hold:s.hold.totalWealth,Sell:s.sell.totalWealthAtEnd,Advantage:s.hold.totalWealth-s.sell.totalWealthAtEnd}))} margin={{top:10,right:10,left:0,bottom:0}}>
+            <BarChart data={compareData.map((s,i)=>({name:s.name,[HOLD_LABEL]:s.hold.totalWealth,[SELL_LABEL]:s.sell.totalWealthAtEnd,Advantage:s.hold.totalWealth-s.sell.totalWealthAtEnd}))} margin={{top:10,right:10,left:0,bottom:0}}>
               <CartesianGrid strokeDasharray="3 3" stroke={colors.grid}/>
               <XAxis dataKey="name" stroke={colors.muted} fontSize={12}/>
               <YAxis stroke={colors.muted} fontSize={11} tickFormatter={fmtK}/>
               <Tooltip content={<ChartTooltip/>}/>
               <Legend wrapperStyle={{fontSize:12}}/>
-              <Bar dataKey="Hold" fill={colors.accent} radius={[4,4,0,0]}/>
-              <Bar dataKey="Sell" fill={colors.blue} radius={[4,4,0,0]}/>
+              <Bar dataKey={HOLD_LABEL} fill={colors.accent} radius={[4,4,0,0]}/>
+              <Bar dataKey={SELL_LABEL} fill={colors.blue} radius={[4,4,0,0]}/>
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -767,8 +773,8 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
               </thead>
               <tbody>
                 {[
-                  ['Hold Total Wealth',d=>fmtK(d.hold.totalWealth),'accent'],
-                  ['Sell & Invest',d=>fmtK(d.sell.totalWealthAtEnd),'blue'],
+                  [HOLD_LABEL+' Total Wealth',d=>fmtK(d.hold.totalWealth),'accent'],
+                  [SELL_LABEL,d=>fmtK(d.sell.totalWealthAtEnd),'blue'],
                   ['Advantage (Hold-Sell)',d=>{const v=d.hold.totalWealth-d.sell.totalWealthAtEnd;return <span style={{color:v>=0?'var(--accent)':'var(--red)'}}>{v>=0?'+':''}{fmtK(v)}</span>;}],
                   ['Year 1 Cash Flow',d=><span style={{color:(d.cashFlow>=0)?'var(--accent)':'var(--red)'}}>{fmtK(d.cashFlow)}</span>],
                   ['Cap Rate',d=>`${d.capRate.toFixed(1)}%`],
@@ -776,7 +782,7 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
                   ['Appreciation',d=>`${d.sens.appreciation}%`],
                   ['Alt. Return',d=>`${d.sens.altReturn}%`],
                   ['Hold Period',d=>`${d.sens.yearsToHold} yrs`],
-                  ['Recommendation',d=>{const better=d.hold.totalWealth>=d.sell.totalWealthAtEnd;return <span style={{color:better?'var(--accent)':'var(--blue)',fontWeight:700}}>{better?'Hold':'Sell'}</span>;}],
+                  ['Recommendation',d=>{const better=d.hold.totalWealth>=d.sell.totalWealthAtEnd;return <span style={{color:better?'var(--accent)':'var(--blue)',fontWeight:700}}>{better?HOLD_LABEL:SELL_LABEL}</span>;}],
                 ].map(([label,fn],ri)=>(
                   <tr key={ri} style={{borderBottom:'1px solid var(--border-primary)'}}>
                     <td style={{padding:'8px',color:'var(--text-muted)',fontSize:12}}>{label}</td>
@@ -893,7 +899,7 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
         <SectionLabel>Key Metrics Explained</SectionLabel>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:12}}>
           {[
-            ['Hold Total Wealth','Property equity + cumulative net cash flow over the hold period. This is what you\'d be worth if you kept renting.'],
+            [HOLD_LABEL+' Total Wealth','Property equity + cumulative net cash flow over the hold period. This is what you\'d be worth if you kept renting.'],
             ['Sell & Invest Value','After-tax sale proceeds invested at your chosen alternative return rate. Accounts for realtor fees, closing costs, capital gains, and depreciation recapture.'],
             ['1031 Exchange','Tax-deferred swap into a replacement property. Defers capital gains and depreciation recapture, letting your full equity compound in the new property.'],
             ['Recommendation','Whichever scenario produces the highest total wealth at the end of your hold period wins. The advantage shows the dollar difference.'],

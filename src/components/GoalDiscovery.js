@@ -89,10 +89,12 @@ export default function GoalDiscovery({ onComplete, dark }) {
         if (ans === 'other') {
           discovery[question.id] = otherText[question.id] || '';
           discovery[question.id + '_type'] = 'custom';
+          discovery[question.id + '_value'] = 'other';
         } else {
           const opt = question.options.find(o => o.value === ans);
           discovery[question.id] = opt ? opt.label : ans || '';
           discovery[question.id + '_type'] = 'preset';
+          discovery[question.id + '_value'] = ans || '';
         }
       });
       onComplete(discovery);
@@ -156,6 +158,25 @@ export default function GoalDiscovery({ onComplete, dark }) {
               {opt.label}
             </div>
           ))}
+
+          {/* STRcalc recommendation for new purchase evaluators */}
+          {q.id === 'situation' && currentAnswer === 'evaluating-purchase' && (
+            <div style={{
+              padding: '14px 18px', borderRadius: 10, marginTop: 4,
+              background: 'rgba(154,120,32,0.08)', border: '1.5px solid rgba(154,120,32,0.2)',
+            }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gold)', marginBottom: 6 }}>
+                Also check out STRcalc
+              </div>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+                For a deeper purchase analysis with 3-scenario modeling (worst/likely/best), cleaning economics, PM suite, and deal signal scoring, try our dedicated purchase tool at{' '}
+                <a href="https://str-calc-sigma.vercel.app" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>STRcalc</a>.
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 6, margin: '6px 0 0' }}>
+                PropertyPath will model this as a buy-and-hold vs. invest-elsewhere comparison.
+              </p>
+            </div>
+          )}
 
           {/* Other option */}
           <div
