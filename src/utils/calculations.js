@@ -1,4 +1,4 @@
-// STRInvestCalc — Calculation Engine
+// PropertyPath — Calculation Engine
 
 export function calculateHoldScenario(data, years = 10) {
   const cv = parseFloat(data.currentValue)||0, pp = parseFloat(data.purchasePrice)||0;
