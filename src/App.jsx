@@ -25,6 +25,22 @@ export default function App() {
     try { localStorage.setItem('vhg-theme', dark ? 'dark' : 'light'); } catch (_e) {}
   }, [dark]);
 
+  // Load shared analysis from URL
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const shared = params.get('share');
+      if (shared) {
+        const data = JSON.parse(decodeURIComponent(atob(shared)));
+        if (data.formData) {
+          if (data.discovery) setDiscoveryData(data.discovery);
+          // Simulate submitting the form
+          setTimeout(() => handleAnalyze(data.formData), 100);
+        }
+      }
+    } catch (_e) {}
+  }, []); // eslint-disable-line
+
   // App state
   const [view, setView] = useState('landing');
   const [discoveryData, setDiscoveryData] = useState(null); // Goal discovery answers
@@ -33,7 +49,12 @@ export default function App() {
   const [holdResult, setHoldResult] = useState(null);
   const [sellResult, setSellResult] = useState(null);
   const [exchangeResult, setExchangeResult] = useState(null);
-  const [isPro, setIsPro] = useState(false);
+  const [isPro, setIsPro] = useState(() => {
+    try { return !!localStorage.getItem('vhg-pro-email'); } catch(_e) { return false; }
+  });
+  const [proUserEmail, setProUserEmail] = useState(() => {
+    try { return localStorage.getItem('vhg-pro-email')||''; } catch(_e) { return ''; }
+  });
   const [showProGate, setShowProGate] = useState(false);
 
   const calcRef = useRef(null);
@@ -114,6 +135,7 @@ export default function App() {
       {view === 'dashboard' && holdResult && sellResult && (
         <Dashboard
           formData={formData}
+          rawFormData={rawFormData}
           holdResult={holdResult}
           sellResult={sellResult}
           exchangeResult={exchangeResult}
@@ -122,6 +144,7 @@ export default function App() {
           isPro={isPro}
           onProClick={() => setShowProGate(true)}
           discoveryData={discoveryData}
+          proUserEmail={proUserEmail}
         />
       )}
 
@@ -129,7 +152,12 @@ export default function App() {
 
       {showProGate && (
         <ProGate
-          onUnlock={(user) => { setIsPro(true); setShowProGate(false); }}
+          onUnlock={(user) => {
+            setIsPro(true);
+            setProUserEmail(user.email||'');
+            setShowProGate(false);
+            try{localStorage.setItem('vhg-pro-email',user.email||'pro');localStorage.setItem('vhg-pro-name',user.name||'');}catch(_e){}
+          }}
           onClose={() => setShowProGate(false)}
           discoveryData={discoveryData}
         />
