@@ -173,6 +173,7 @@ export default function App() {
           onEditAssumptions={() => setView('questionnaire')}
           onLoadProperty={(savedFormData) => handleAnalyze(savedFormData)}
           dark={dark}
+          setDark={setDark}
           isPro={isPro}
           onProClick={() => setShowProGate(true)}
           discoveryData={discoveryData}
