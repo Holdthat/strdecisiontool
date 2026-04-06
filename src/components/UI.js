@@ -232,35 +232,62 @@ export const NavBar = ({dark,setDark,onNav}) => (
 // ===================================================================
 // APP HEADER BAR - shown inside the calculator/dashboard (like STRcalc)
 // ===================================================================
-export const AppHeader = ({dark}) => (
-  <div style={{
-    background:dark?'linear-gradient(135deg,#0B1120,#151D2E)':'linear-gradient(135deg,#FFFFFF,#F5F5F5)',
-    border:'1px solid var(--border-primary)',borderRadius:10,
-    padding:'16px 24px',marginBottom:16,
-    display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,
-  }}>
-    <div style={{display:'flex',alignItems:'center',gap:14}}>
-      <svg viewBox="0 0 320 170" width="70" height="37" style={{flexShrink:0}}>
-        <path d="M85 28 L110 12 L128 22 L155 4 L178 18 L195 10 L235 28" fill="none" stroke="#10B981" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
-        <line x1="80" y1="28" x2="240" y2="28" stroke="#C8962E" strokeWidth="0.8"/>
-        <text x="160" y="62" textAnchor="middle" fill={dark?'#FFFFFF':'#1A1A1A'} fontFamily="Georgia,serif" fontSize="34" fontWeight="700" letterSpacing="0.08em">VACATION</text>
-        <text x="160" y="95" textAnchor="middle" fill={dark?'#FFFFFF':'#1A1A1A'} fontFamily="Georgia,serif" fontSize="34" fontWeight="700" letterSpacing="0.08em">HOME</text>
-        <line x1="60" y1="103" x2="112" y2="103" stroke="#C8962E" strokeWidth="1.5" strokeLinecap="round"/>
-        <line x1="60" y1="109" x2="98" y2="109" stroke="#C8962E" strokeWidth="1" strokeLinecap="round"/>
-        <text x="165" y="138" textAnchor="middle" fill="#C8962E" fontFamily="Georgia,serif" fontSize="32" fontStyle="italic">group</text>
-      </svg>
-      <div>
-        <div style={{display:'flex',alignItems:'baseline',gap:8,flexWrap:'wrap'}}>
-          <span style={{fontSize:24,fontWeight:800,color:'var(--text-primary)',letterSpacing:'-0.01em'}}>
-            Property<span style={{color:'var(--gold)'}}>Path</span>
-          </span>
-          <span style={{fontSize:13,color:'var(--gold)',fontStyle:'italic',fontFamily:'Georgia,serif'}}>by Vacation Home Group</span>
-        </div>
-        <div style={{fontSize:12,color:'var(--text-muted)',fontFamily:"'JetBrains Mono',monospace",letterSpacing:'0.08em',marginTop:3}}>
-          YOUR REAL ESTATE INVESTMENT ADVISOR {String.fromCharCode(183)} Ver. {APP_VERSION}
+export const AppHeader = ({dark, setDark, isPro, onProClick, onSave, onPDF, onShare}) => (
+  <div style={{marginBottom:16}}>
+    <div style={{
+      background:dark?'linear-gradient(135deg,#0B1120,#151D2E)':'linear-gradient(135deg,#FFFFFF,#F5F5F5)',
+      border:'1px solid var(--border-primary)',borderRadius:'10px 10px 0 0',
+      padding:'12px 20px',
+      display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10,
+    }}>
+      <div style={{display:'flex',alignItems:'center',gap:14}}>
+        <svg viewBox="0 0 320 170" width="60" height="32" style={{flexShrink:0}}>
+          <path d="M85 28 L110 12 L128 22 L155 4 L178 18 L195 10 L235 28" fill="none" stroke="#10B981" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
+          <line x1="80" y1="28" x2="240" y2="28" stroke="#C8962E" strokeWidth="0.8"/>
+          <text x="160" y="62" textAnchor="middle" fill={dark?'#FFFFFF':'#1A1A1A'} fontFamily="Georgia,serif" fontSize="34" fontWeight="700" letterSpacing="0.08em">VACATION</text>
+          <text x="160" y="95" textAnchor="middle" fill={dark?'#FFFFFF':'#1A1A1A'} fontFamily="Georgia,serif" fontSize="34" fontWeight="700" letterSpacing="0.08em">HOME</text>
+          <line x1="60" y1="103" x2="112" y2="103" stroke="#C8962E" strokeWidth="1.5" strokeLinecap="round"/>
+          <line x1="60" y1="109" x2="98" y2="109" stroke="#C8962E" strokeWidth="1" strokeLinecap="round"/>
+          <text x="165" y="138" textAnchor="middle" fill="#C8962E" fontFamily="Georgia,serif" fontSize="32" fontStyle="italic">group</text>
+        </svg>
+        <div>
+          <div style={{display:'flex',alignItems:'baseline',gap:6,flexWrap:'wrap'}}>
+            <span style={{fontSize:22,fontWeight:800,color:'var(--text-primary)',letterSpacing:'-0.01em'}}>
+              Property<span style={{color:'var(--gold)'}}>Path</span>
+            </span>
+            <span style={{fontSize:12,color:'var(--gold)',fontStyle:'italic',fontFamily:'Georgia,serif'}}>by Vacation Home Group</span>
+          </div>
+          <div style={{fontSize:11,color:'var(--text-muted)',fontFamily:"'JetBrains Mono',monospace",letterSpacing:'0.08em',marginTop:2}}>
+            YOUR REAL ESTATE INVESTMENT ADVISOR {String.fromCharCode(183)} Ver. {APP_VERSION}
+          </div>
         </div>
       </div>
+      <div style={{display:'flex',alignItems:'center',gap:6}}>
+        {onSave&&<button onClick={onSave} title="Save Property" style={{width:36,height:36,borderRadius:8,border:'1px solid var(--border-primary)',background:'var(--bg-primary)',color:'var(--gold)',fontSize:16,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>💾</button>}
+        {onPDF&&<button onClick={onPDF} title="PDF Report" style={{padding:'6px 12px',borderRadius:8,border:'1px solid var(--border-primary)',background:'var(--bg-primary)',color:'var(--text-muted)',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
+          <span style={{fontSize:14}}>📄</span> PDF
+        </button>}
+        <button onClick={()=>onProClick&&onProClick()} style={{padding:'6px 14px',borderRadius:8,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--text-muted)',fontSize:13,fontWeight:600,cursor:'pointer',opacity:isPro?0.5:1}}>STD</button>
+        <button onClick={()=>{if(!isPro&&onProClick)onProClick();}} style={{padding:'6px 14px',borderRadius:8,border:'none',background:isPro?'var(--gold)':'var(--bg-primary)',color:isPro?'#fff':'var(--gold)',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:4,border:isPro?'none':'1px solid var(--gold)'}}>
+          {isPro&&<span style={{fontSize:12}}>★</span>} PRO
+        </button>
+        {setDark&&<button onClick={()=>setDark(!dark)} title={dark?'Light mode':'Dark mode'} style={{width:36,height:36,borderRadius:8,border:'1px solid var(--border-primary)',background:'var(--bg-primary)',color:'var(--text-primary)',fontSize:16,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>{dark?'☀':'☾'}</button>}
+      </div>
     </div>
+    {/* Pro features banner */}
+    {isPro&&(
+      <div style={{
+        background:dark?'rgba(154,120,32,0.08)':'rgba(154,120,32,0.06)',
+        borderLeft:'1px solid var(--border-primary)',borderRight:'1px solid var(--border-primary)',borderBottom:'1px solid var(--border-primary)',
+        borderRadius:'0 0 10px 10px',padding:'8px 20px',
+        display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',
+      }}>
+        <span style={{color:'var(--gold)',fontSize:14}}>★</span>
+        <span style={{fontSize:13,color:'var(--text-muted)',fontFamily:"'JetBrains Mono',monospace"}}>
+          PRO — Tax Benefits · Mortgage · What-If · AI Summary · Save & Compare · PDF · Email Results
+        </span>
+      </div>
+    )}
   </div>
 );
 

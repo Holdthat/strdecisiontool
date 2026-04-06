@@ -8,7 +8,7 @@ import { Card, SectionLabel, Slider, TabBar, ChartTooltip, InputField, SelectFie
 import { calculateHoldScenario, calculateSellScenario, calculate1031Scenario, calculateTaxBenefits, calculateMortgageScenario, fmt, fmtK } from '../utils/calculations';
 import { chartColors } from '../utils/theme';
 
-export default function Dashboard({formData, rawFormData, sellResult, exchangeResult, onEditAssumptions, onLoadProperty, dark, isPro, onProClick, discoveryData, proUserEmail}) {
+export default function Dashboard({formData, rawFormData, sellResult, exchangeResult, onEditAssumptions, onLoadProperty, dark, setDark, isPro, onProClick, discoveryData, proUserEmail}) {
   const show1031 = !!exchangeResult;
   const colors = chartColors(dark);
   const isBuyer = discoveryData?.situation_value === 'evaluating-purchase';
@@ -1241,10 +1241,13 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
   // ═══════════════════════════════════════════════════════════
   return (
     <div style={{maxWidth:1100,margin:'0 auto',padding:'16px 12px'}}>
-      {/* App Header Bar — like STRcalc */}
-      <AppHeader dark={dark}/>
+      {/* App Header Bar — STRcalc style */}
+      <AppHeader dark={dark} setDark={setDark} isPro={isPro} onProClick={onProClick}
+        onSave={saveCurrentProperty}
+        onPDF={()=>generatePDF()}
+      />
 
-      {/* Property info + action buttons */}
+      {/* Property info + recommendation */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
         <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
           <div style={{fontSize:16,fontWeight:600,color:'var(--text-muted)'}}>{formData.propertyType} · {formData.location}</div>
@@ -1255,7 +1258,6 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
         </div>
         <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
           <button onClick={()=>{
-            // Compact share: only non-empty, non-default values with short keys
             const raw = rawFormData||formData;
             const defaults = {propertyType:'single-family',managementStyle:'self-managed',vacancyRate:'10',roofAge:'5',hvacAge:'5',waterHeaterAge:'3',annualAppreciation:'3',alternativeInvestment:'stock-market',alternativeReturn:'7',exitStrategy:'undecided',taxBracket:'32',sellingCostsPct:'7.5'};
             const keyMap = {propertyType:'t',location:'l',purchasePrice:'pp',currentValue:'cv',yearsOwned:'yo',annualRent:'ar',annualExpenses:'ae',vacancyRate:'vr',mortgageBalance:'mb',mortgageRate:'mr',mortgageYearsRemaining:'my',roofAge:'ra',hvacAge:'ha',waterHeaterAge:'wa',annualAppreciation:'ap',alternativeReturn:'rt',exitStrategy:'es',taxBracket:'tb',sellingCostsPct:'sc',managementStyle:'ms',alternativeInvestment:'ai',replacementValue:'rv',replacementRent:'rr',replacementExpenses:'re',capRate:'cr'};
@@ -1269,9 +1271,7 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
             const url = `${window.location.origin}${window.location.pathname}?s=${encoded}`;
             navigator.clipboard?.writeText(url);
             alert('Share link copied! (' + url.length + ' chars)');
-          }} style={{padding:'7px 14px',borderRadius:6,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--text-muted)',fontSize:12,cursor:'pointer'}}>Share Link</button>
-          <button onClick={()=>generatePDF()} style={{padding:'7px 14px',borderRadius:6,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--text-muted)',fontSize:12,cursor:'pointer'}}>PDF Report</button>
-          {!isPro&&<button onClick={onProClick} style={{padding:'7px 16px',borderRadius:6,border:'none',background:'var(--gold)',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>PRO</button>}
+          }} style={{padding:'7px 14px',borderRadius:6,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--text-muted)',fontSize:12,cursor:'pointer'}}>Share</button>
           <button onClick={onEditAssumptions} style={{padding:'7px 16px',borderRadius:6,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--text-muted)',fontSize:13,cursor:'pointer'}}>← Edit</button>
         </div>
       </div>
