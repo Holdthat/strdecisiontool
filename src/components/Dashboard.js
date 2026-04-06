@@ -18,6 +18,10 @@ export default function Dashboard({formData, rawFormData, sellResult, exchangeRe
   // AI Summary state (declared early so loadProperty can use it)
   const [aiSummary, setAiSummary] = useState('');
 
+  // Pro view toggle (separate from isPro unlock status)
+  const [viewPro, setViewPro] = useState(isPro);
+  useEffect(() => { setViewPro(isPro); }, [isPro]);
+
   // Saved Properties (localStorage)
   const [savedProperties, setSavedProperties] = useState(() => {
     try { return JSON.parse(localStorage.getItem('vhg-saved-properties')||'[]'); } catch(_e) { return []; }
@@ -1226,7 +1230,7 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
     {id:'overview',label:'Overview'},
     {id:'analysis',label:'Analysis'},
     ...(savedProperties.length>0 ? [{id:'properties',label:`Properties (${savedProperties.length})`}] : []),
-    ...(isPro ? [
+    ...(viewPro ? [
       {id:'tax',label:'Tax'},
       {id:'mortgage',label:'Mortgage'},
       {id:'snapshots',label:'What-If'},
@@ -1242,8 +1246,28 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
   return (
     <div style={{maxWidth:1100,margin:'0 auto',padding:'16px 12px'}}>
       {/* App Header Bar — STRcalc style */}
-      <AppHeader dark={dark} setDark={setDark} isPro={isPro} onProClick={onProClick}
-        onSave={saveCurrentProperty}
+      <AppHeader dark={dark} setDark={setDark} isPro={viewPro} onProClick={onProClick}
+        onTogglePro={(show)=>setViewPro(show)}
+        onSave={()=>{
+          const existingIdx = savedProperties.findIndex(p => p.location === formData.location);
+          if (existingIdx !== -1) {
+            const updated = [...savedProperties];
+            updated[existingIdx] = {...updated[existingIdx],
+              formData: rawFormData || formData,
+              holdWealth: hold.totalWealth,
+              sellWealth: sell.totalWealthAtEnd,
+              recommendation: rec.text,
+              aiSummary: aiSummary || updated[existingIdx].aiSummary,
+              savedAt: new Date().toLocaleDateString(),
+            };
+            setSavedProperties(updated);
+            try{localStorage.setItem('vhg-saved-properties',JSON.stringify(updated));}catch(_e){}
+            alert('Property updated!');
+          } else {
+            saveCurrentProperty();
+            alert('Property saved!');
+          }
+        }}
         onPDF={()=>generatePDF()}
       />
 
@@ -1283,7 +1307,7 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
       <TabBar tabs={tabs} active={activeTab} onChange={setActiveTab}/>
 
       {/* Pro upsell for non-pro users */}
-      {!isPro && (activeTab==='overview'||activeTab==='analysis') && (
+      {!viewPro && (activeTab==='overview'||activeTab==='analysis') && (
         <div style={{marginBottom:12,padding:'10px 16px',borderRadius:8,background:'var(--gold-subtle)',border:'1px solid rgba(154,120,32,0.2)',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
           <span style={{fontSize:14,color:'var(--text-muted)'}}><strong style={{color:'var(--gold)'}}>PRO</strong> adds Tax Benefits, Mortgage Comparison, What-If Snapshots, and AI Summary.</span>
           <button onClick={onProClick} style={{padding:'6px 14px',borderRadius:6,border:'none',background:'var(--gold)',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>Unlock</button>
@@ -1295,10 +1319,10 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
       {activeTab==='analysis'&&renderAnalysis()}
       {activeTab==='properties'&&renderSavedProperties()}
       {activeTab==='how'&&renderHowItWorks()}
-      {activeTab==='tax'&&isPro&&renderTax()}
-      {activeTab==='mortgage'&&isPro&&renderMortgage()}
-      {activeTab==='snapshots'&&isPro&&renderSnapshots()}
-      {activeTab==='ai'&&isPro&&renderAI()}
+      {activeTab==='tax'&&viewPro&&renderTax()}
+      {activeTab==='mortgage'&&viewPro&&renderMortgage()}
+      {activeTab==='snapshots'&&viewPro&&renderSnapshots()}
+      {activeTab==='ai'&&viewPro&&renderAI()}
       {activeTab==='settings'&&isAdmin&&renderSettings()}
 
       {/* Spacer for mobile bottom nav */}
@@ -1335,7 +1359,7 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
           {id:'overview',icon:'📊',label:'Overview'},
           {id:'analysis',icon:'📈',label:'Analysis'},
           ...(savedProperties.length>0?[{id:'properties',icon:'🏠',label:'Properties'}]:[]),
-          ...(isPro?[{id:'ai',icon:'🤖',label:'AI'}]:[]),
+          ...(viewPro?[{id:'ai',icon:'🤖',label:'AI'}]:[]),
           {id:'how',icon:'❓',label:'Help'},
         ].map(t=>(
           <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{

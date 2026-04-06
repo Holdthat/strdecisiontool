@@ -232,11 +232,11 @@ export const NavBar = ({dark,setDark,onNav}) => (
 // ===================================================================
 // APP HEADER BAR - shown inside the calculator/dashboard (like STRcalc)
 // ===================================================================
-export const AppHeader = ({dark, setDark, isPro, onProClick, onSave, onPDF, onShare}) => (
+export const AppHeader = ({dark, setDark, isPro, onProClick, onTogglePro, onSave, onPDF, onShare}) => (
   <div style={{marginBottom:16}}>
     <div style={{
       background:dark?'linear-gradient(135deg,#0B1120,#151D2E)':'linear-gradient(135deg,#FFFFFF,#F5F5F5)',
-      border:'1px solid var(--border-primary)',borderRadius:'10px 10px 0 0',
+      border:'1px solid var(--border-primary)',borderRadius:isPro?'10px 10px 0 0':'10px',
       padding:'12px 20px',
       display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10,
     }}>
@@ -267,8 +267,8 @@ export const AppHeader = ({dark, setDark, isPro, onProClick, onSave, onPDF, onSh
         {onPDF&&<button onClick={onPDF} title="PDF Report" style={{padding:'6px 12px',borderRadius:8,border:'1px solid var(--border-primary)',background:'var(--bg-primary)',color:'var(--text-muted)',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
           <span style={{fontSize:14}}>📄</span> PDF
         </button>}
-        <button onClick={()=>onProClick&&onProClick()} style={{padding:'6px 14px',borderRadius:8,border:'1px solid var(--border-primary)',background:'transparent',color:'var(--text-muted)',fontSize:13,fontWeight:600,cursor:'pointer',opacity:isPro?0.5:1}}>STD</button>
-        <button onClick={()=>{if(!isPro&&onProClick)onProClick();}} style={{padding:'6px 14px',borderRadius:8,border:'none',background:isPro?'var(--gold)':'var(--bg-primary)',color:isPro?'#fff':'var(--gold)',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:4,border:isPro?'none':'1px solid var(--gold)'}}>
+        <button onClick={()=>{if(isPro&&onTogglePro)onTogglePro(false);}} style={{padding:'6px 14px',borderRadius:8,border:!isPro?'1.5px solid var(--text-muted)':'1px solid var(--border-primary)',background:!isPro?'var(--bg-subtle)':'transparent',color:'var(--text-muted)',fontSize:13,fontWeight:!isPro?700:600,cursor:isPro?'pointer':'default'}}>STD</button>
+        <button onClick={()=>{if(isPro){if(onTogglePro)onTogglePro(true);}else{if(onProClick)onProClick();}}} style={{padding:'6px 14px',borderRadius:8,border:isPro?'none':'1px solid var(--gold)',background:isPro?'var(--gold)':'transparent',color:isPro?'#fff':'var(--gold)',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
           {isPro&&<span style={{fontSize:12}}>★</span>} PRO
         </button>
         {setDark&&<button onClick={()=>setDark(!dark)} title={dark?'Light mode':'Dark mode'} style={{width:36,height:36,borderRadius:8,border:'1px solid var(--border-primary)',background:'var(--bg-primary)',color:'var(--text-primary)',fontSize:16,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>{dark?'☀':'☾'}</button>}
@@ -283,7 +283,7 @@ export const AppHeader = ({dark, setDark, isPro, onProClick, onSave, onPDF, onSh
         display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',
       }}>
         <span style={{color:'var(--gold)',fontSize:14}}>★</span>
-        <span style={{fontSize:13,color:'var(--text-muted)',fontFamily:"'JetBrains Mono',monospace"}}>
+        <span style={{fontSize:13,color:'var(--gold)',fontFamily:"'JetBrains Mono',monospace"}}>
           PRO — Tax Benefits · Mortgage · What-If · AI Summary · Save & Compare · PDF · Email Results
         </span>
       </div>
