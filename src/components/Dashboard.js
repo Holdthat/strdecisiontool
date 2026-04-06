@@ -1246,7 +1246,7 @@ IMPORTANT: End your response with this disclaimer on its own line, separated by 
   return (
     <div style={{maxWidth:1100,margin:'0 auto',padding:'16px 12px'}}>
       {/* App Header Bar — STRcalc style */}
-      <AppHeader dark={dark} setDark={setDark} isPro={viewPro} onProClick={onProClick}
+      <AppHeader dark={dark} setDark={setDark} isPro={viewPro} isUnlocked={isPro} onProClick={onProClick}
         onTogglePro={(show)=>setViewPro(show)}
         onSave={()=>{
           const existingIdx = savedProperties.findIndex(p => p.location === formData.location);
